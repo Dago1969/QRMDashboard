@@ -1,0 +1,47 @@
+/*
+  Stili dashboard.
+ */
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+
+h2 {
+  margin-top: 0;
+}
+
+.client-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.client-role-box {
+  border: 1px solid #ccd3df;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+
+.client-role-box p {
+  margin: 0 0 6px 0;
+}
+
+.client-role-box p:last-child {
+  margin-bottom: 0;
+}
+
+.jwt-debug {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid #ccd3df;
+  border-radius: 8px;
+  background: #f8fafc;
+  overflow: auto;
+  white-space: pre-wrap;
+}

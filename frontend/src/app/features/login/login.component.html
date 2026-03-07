@@ -1,0 +1,19 @@
+<div class="container">
+  <div class="card login-card">
+    <h2>{{ t('login.title') }}</h2>
+    <p>{{ t('login.subtitle') }}</p>
+
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <label for="username">{{ t('login.label.username') }}</label>
+      <input id="username" type="text" formControlName="username" autocomplete="username" />
+
+      <label for="password">{{ t('login.label.password') }}</label>
+      <input id="password" type="password" formControlName="password" autocomplete="current-password" />
+
+      <button class="btn btn-primary" type="submit">{{ t('login.action.submit') }}</button>
+    </form>
+
+    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </div>
+</div>

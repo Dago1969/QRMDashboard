@@ -1,0 +1,19 @@
+{
+  "properties": [
+    {
+      "name": "app.keycloak.token-url",
+      "type": "java.lang.String",
+      "description": "URL token endpoint di Keycloak."
+    },
+    {
+      "name": "app.keycloak.client-id",
+      "type": "java.lang.String",
+      "description": "Client ID usato dall'applicazione per richiedere token."
+    },
+    {
+      "name": "app.keycloak.grant-type",
+      "type": "java.lang.String",
+      "description": "Grant type usato per login verso Keycloak."
+    }
+  ]
+}

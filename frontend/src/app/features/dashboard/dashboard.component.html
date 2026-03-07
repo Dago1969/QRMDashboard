@@ -1,0 +1,32 @@
+<div class="container">
+  <div class="card">
+    <div class="dashboard-header">
+      <h2>{{ t('dashboard.title') }}</h2>
+      <button class="btn btn-danger" (click)="logout()">{{ t('dashboard.action.logout') }}</button>
+    </div>
+
+    <p *ngIf="message"><strong>{{ t('dashboard.label.message') }}</strong> {{ message }}</p>
+    <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
+    <p *ngIf="subject"><strong>{{ t('dashboard.label.subject') }}</strong> {{ subject }}</p>
+
+    <div *ngIf="clientRoleEntries.length > 0" class="client-roles-grid">
+      <div
+        class="client-role-box"
+        *ngFor="let entry of clientRoleEntries"
+        (click)="openTenantsDashboard(entry.client, entry.role)"
+        role="button"
+        tabindex="0"
+      >
+        <p><strong>{{ t('dashboard.label.client') }}</strong> {{ entry.client }}</p>
+        <p><strong>{{ t('dashboard.label.role') }}</strong> {{ entry.role }}</p>
+      </div>
+    </div>
+
+    <p *ngIf="clientRoleEntries.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
+
+    <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
+    <pre class="jwt-debug" *ngIf="decodedClaimsPretty">{{ decodedClaimsPretty }}</pre>
+
+    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </div>
+</div>
