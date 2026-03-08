@@ -125,6 +125,8 @@ sempre un Mapper per convertire le Entity in DTO e viceversa
 
 ### Gestione eccezioni
 - Nei Controller Spring gestire in modo accurato le eccezioni lanciate dal Service
+- Per errori frequenti e trasversali a tutte le Entity usare sempre una gestione centralizzata con `@RestControllerAdvice`, restituendo messaggi leggibili dal frontend dentro `detail` o `message` e traducendo errori tecnici di persistenza come `UNIQUE constraint failed`, `NOT NULL constraint failed` e `FOREIGN KEY constraint failed` in motivazioni funzionali esplicite.
+- Quando un vincolo di persistenza puo essere previsto a livello di dominio, preferire comunque una validazione esplicita nel Service con `ResponseStatusException`, ma mantenere il gestore globale come rete di sicurezza per tutte le Entity.
 
 ### Generazione di codice
 - Quando viene richiesto di generare codice, creare sempre un commento che spiega il codice generato, 
