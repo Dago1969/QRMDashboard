@@ -8,20 +8,27 @@
     <p *ngIf="message"><strong>{{ t('dashboard.label.message') }}</strong> {{ message }}</p>
     <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
 
-    <div *ngIf="clientRoleEntries.length > 0" class="client-roles-grid">
-      <div
-        class="client-role-box"
-        *ngFor="let entry of clientRoleEntries"
-        (click)="openTenantsDashboard(entry.client, entry.role)"
-        role="button"
-        tabindex="0"
-      >
-        <p><strong>{{ t('dashboard.label.client') }}</strong> {{ entry.client }}</p>
-        <p><strong>{{ t('dashboard.label.role') }}</strong> {{ entry.role }}</p>
+    <div *ngIf="groupedClientRoles.length > 0">
+      <div *ngFor="let group of groupedClientRoles" class="client-group-card">
+        <div class="client-group-title">{{ group.client }}</div>
+        <div class="client-roles-grid">
+          <div *ngFor="let role of group.resourceRoles" class="client-role-box" role="group">
+            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }}</p>
+            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role)" tabindex="0">
+              {{ t('dashboard.menu.cta') }}
+            </button>
+          </div>
+          <div *ngFor="let role of group.realmRoles" class="client-role-box realm-role-box" role="group">
+            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }} <span class="realm-role-label">(realm)</span></p>
+            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role)" tabindex="0">
+              {{ t('dashboard.menu.cta') }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <p *ngIf="clientRoleEntries.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
+    <p *ngIf="groupedClientRoles.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
 
     <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
     <pre class="jwt-debug" *ngIf="decodedClaimsPretty">{{ decodedClaimsPretty }}</pre>

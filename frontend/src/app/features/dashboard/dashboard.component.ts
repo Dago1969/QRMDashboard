@@ -1,3 +1,4 @@
+// ...existing code...
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
@@ -18,7 +19,8 @@ export class DashboardComponent implements OnInit {
   message = '';
   username = '';
   subject = '';
-  clientRoleEntries: Array<{ client: string; role: string }> = [];
+  // Raggruppamento per la view: [{ client, resourceRoles: string[], realmRoles: string[] }]
+  groupedClientRoles: Array<{ client: string; resourceRoles: string[]; realmRoles: string[] }> = [];
   decodedClaimsPretty = '';
   errorMessage = '';
   translations: Record<string, string> = {};
@@ -41,14 +43,31 @@ export class DashboardComponent implements OnInit {
         this.message = response.message;
         this.username = response.username;
         this.subject = response.subject;
-        this.clientRoleEntries = Object.entries(response.clientRoles ?? {})
-          .filter(([client]) => client.toLowerCase() !== 'account')
-          .flatMap(([client, roles]) =>
-            (roles ?? []).map((role) => ({
-              client,
-              role
-            }))
-          );
+
+        // Raggruppa i box per client
+        const resourceClients = Object.keys(response.clientRoles ?? {}).filter(client => client.toLowerCase() !== 'account').sort();
+        const claims = response.decodedClaims ?? {};
+        const realmAccess = (claims['realm_access'] as any)?.roles as string[] | undefined;
+        const standardRoles = [
+          'default-roles-qtm',
+          'offline_access',
+          'uma_authorization'
+        ];
+        const customRealmRoles = (realmAccess ?? []).filter(r => !standardRoles.includes(r));
+
+        // Prepara la struttura raggruppata per la view
+        this.groupedClientRoles = resourceClients.map(client => {
+          // Resource roles ordinati
+          const resourceRoles = (response.clientRoles?.[client] ?? []).slice().sort();
+          // Realm roles ordinati
+          const realmRoles = (customRealmRoles ?? []).slice().sort();
+          return {
+            client,
+            resourceRoles,
+            realmRoles
+          };
+        });
+
         this.decodedClaimsPretty = JSON.stringify(response.decodedClaims ?? {}, null, 2);
       },
       error: () => {

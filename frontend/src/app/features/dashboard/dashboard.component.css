@@ -1,3 +1,19 @@
+/* Card raggruppamento client */
+.client-group-card {
+  border: 2px solid #b3b3b3;
+  border-radius: 12px;
+  background: #f9f9fb;
+  padding: 18px 18px 12px 18px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
+}
+
+.client-group-title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #2a2a2a;
+}
 /*
   Stili dashboard.
  */
