@@ -42,7 +42,36 @@ Da root progetto:
 mvn spring-boot:run
 ```
 
-Backend disponibile su `http://localhost:8080`.
+Backend disponibile su `http://localhost:8086`.
+
+## Avvio con Docker
+
+Build immagine:
+
+```bash
+mvn clean package -DskipTests
+docker build -t qtm-dashboard .
+```
+
+Run container usando i servizi esposti sulla macchina host:
+
+```bash
+docker run --rm -p 8086:8086 qtm-dashboard
+```
+
+Se MySQL o Keycloak non sono raggiungibili tramite `host.docker.internal`, sovrascrivere le variabili d'ambiente al run:
+
+```bash
+docker run --rm -p 8086:8086 \
+	-e SPRING_DATASOURCE_URL="jdbc:mysql://<db-host>:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" \
+	-e SPRING_DATASOURCE_USERNAME=root \
+	-e SPRING_DATASOURCE_PASSWORD=dago \
+	-e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="http://<keycloak-host>:8085/realms/QTM" \
+	-e APP_KEYCLOAK_TOKEN_URL="http://<keycloak-host>:8085/realms/QTM/protocol/openid-connect/token" \
+	qtm-dashboard
+```
+
+Nota: se MySQL gira sulla macchina host ma accetta connessioni solo da `localhost`, il container non potra collegarsi finche il server MySQL non viene configurato per ascoltare anche su un indirizzo raggiungibile dal container.
 
 Endpoint principali:
 

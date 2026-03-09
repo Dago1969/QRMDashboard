@@ -1,14 +1,14 @@
 server:
-  port: 8086
+  port: ${SERVER_PORT:8086}
 
 spring:
   sql:
     init:
       mode: always
   datasource:
-    url: jdbc:mysql://localhost:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: dago
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:dago}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     defer-datasource-initialization: true
@@ -22,23 +22,23 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8085/realms/QTM
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8085/realms/QTM}
 
 app:
   keycloak:
-    token-url: http://localhost:8085/realms/QTM/protocol/openid-connect/token
-    client-id: postman-client
-    grant-type: password
+    token-url: ${APP_KEYCLOAK_TOKEN_URL:http://localhost:8085/realms/QTM/protocol/openid-connect/token}
+    client-id: ${APP_KEYCLOAK_CLIENT_ID:postman-client}
+    grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
   tenants:
-    default-tenant-app-url: http://localhost:4201/dashboard
+    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:4201/dashboard}
     mappings:
       - client-code: app-cliente-A
         client-name: app-cliente-A
-        tenant-app-url: http://localhost:4201/dashboard
+        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:4201/dashboard}
         enabled: true
       - client-code: app-cliente-B
         client-name: app-cliente-B
-        tenant-app-url: http://localhost:4201/dashboard
+        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:4201/dashboard}
         enabled: true
 
 logging:

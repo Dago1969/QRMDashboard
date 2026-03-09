@@ -3,6 +3,8 @@ package com.qtm.dashboard.user.controller;
 import com.qtm.dashboard.user.dto.UserDto;
 import com.qtm.dashboard.user.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/users")
 public class UserController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
     private final UserService userService;
 
     public UserController(UserService userService) {
@@ -36,12 +40,18 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> dashboard(@AuthenticationPrincipal Jwt jwt) {
         Map<String, List<String>> clientRoles = extractClientRoles(jwt);
         Map<String, Object> response = new LinkedHashMap<>();
+        String preferredUsername = jwt.getClaimAsString("preferred_username");
+        String username = jwt.getClaimAsString("username");
+        String sub = jwt.getSubject();
+        log.info("[QTMDashboard] JWT subject: {}", sub);
+        log.info("[QTMDashboard] JWT preferred_username: {}", preferredUsername);
+        log.info("[QTMDashboard] JWT username: {}", username);
+        log.info("[QTMDashboard] JWT claims: {}", jwt.getClaims());
         response.put("message", "Accesso dashboard autorizzato");
-        response.put("username", jwt.getClaimAsString("preferred_username"));
-        response.put("subject", jwt.getSubject());
+        response.put("username", preferredUsername);
+        response.put("subject", sub);
         response.put("clientRoles", clientRoles);
         response.put("decodedClaims", extractDecodedClaims(jwt));
-
         return ResponseEntity.ok(response);
     }
 
