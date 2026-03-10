@@ -1,5 +1,7 @@
 // ...existing code...
-import { Component, OnInit } from '@angular/core';
+// ...existing code...
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
@@ -28,7 +30,8 @@ export class DashboardComponent implements OnInit {
   constructor(
     private readonly authService: AuthService,
     private readonly router: Router,
-    private readonly i18nPropertiesService: I18nPropertiesService
+    private readonly i18nPropertiesService: I18nPropertiesService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -72,6 +75,7 @@ export class DashboardComponent implements OnInit {
       },
       error: () => {
         this.errorMessage = this.t('dashboard.error.invalidToken');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -95,16 +99,61 @@ export class DashboardComponent implements OnInit {
 
     this.authService.resolveTenantAppUrl(client).subscribe({
       next: (resolution) => {
-        const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
-        targetUrl.searchParams.set('token', token);
-        targetUrl.searchParams.set('client', client);
-        targetUrl.searchParams.set('role', role);
-        window.location.href = targetUrl.toString();
+        this.authService.validateTenantRole(role).subscribe({
+          next: () => {
+            const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
+            targetUrl.searchParams.set('token', token);
+            targetUrl.searchParams.set('client', client);
+            targetUrl.searchParams.set('role', role);
+            window.location.href = targetUrl.toString();
+          },
+          error: (error: HttpErrorResponse) => {
+            this.errorMessage = this.getTenantResolutionErrorMessage(error, role, client);
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: () => {
-        this.errorMessage = this.t('dashboard.error.tenantResolutionFailed');
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage = this.getTenantResolutionErrorMessage(error, role, client);
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  private getTenantResolutionErrorMessage(error: HttpErrorResponse, role: string, client?: string): string {
+    const clientName = client || 'TENANTS-APP';
+    if (error.status === 404) {
+      return this.t('dashboard.error.tenantRoleNotProvisioned')
+        .replace('{role}', role)
+        .replaceAll('{client}', clientName);
+    }
+
+    const detail = this.extractErrorDetail(error).toLowerCase();
+    if (detail.includes('ruolo non trovato') || detail.includes('role not found')) {
+      return this.t('dashboard.error.tenantRoleNotProvisioned')
+        .replace('{role}', role)
+        .replaceAll('{client}', clientName);
+    }
+
+    return this.t('dashboard.error.tenantResolutionFailed');
+  }
+
+  private extractErrorDetail(error: HttpErrorResponse): string {
+    const payload = error.error;
+    if (typeof payload === 'string') {
+      return payload;
+    }
+    if (payload && typeof payload === 'object') {
+      const detail = (payload as { detail?: unknown }).detail;
+      if (typeof detail === 'string') {
+        return detail;
+      }
+      const message = (payload as { message?: unknown }).message;
+      if (typeof message === 'string') {
+        return message;
+      }
+    }
+    return '';
   }
 
   private buildTenantTargetUrl(rawTenantUrl: string): URL {
@@ -115,5 +164,13 @@ export class DashboardComponent implements OnInit {
     }
 
     return targetUrl;
+  }
+
+  /**
+   * Chiude la modale di errore e resetta il messaggio.
+   */
+  closeErrorModal(): void {
+    this.errorMessage = '';
+    this.cdr.detectChanges();
   }
 }

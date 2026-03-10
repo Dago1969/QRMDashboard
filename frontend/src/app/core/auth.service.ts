@@ -49,6 +49,10 @@ export class AuthService {
     );
   }
 
+  validateTenantRole(roleId: string): Observable<unknown> {
+    return this.http.get(`${environment.tenantsApiBaseUrl}/authorizations/roles/${encodeURIComponent(roleId)}`);
+  }
+
   getToken(): string | null {
     const token = localStorage.getItem(this.tokenStorageKey);
 

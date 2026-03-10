@@ -3,5 +3,6 @@
  */
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:8086/api'
+  apiBaseUrl: 'http://localhost:8086/api',
+  tenantsApiBaseUrl: 'http://localhost:8087/api/tenants'
 };

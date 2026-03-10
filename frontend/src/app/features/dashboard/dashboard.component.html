@@ -33,6 +33,21 @@
     <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
     <pre class="jwt-debug" *ngIf="decodedClaimsPretty">{{ decodedClaimsPretty }}</pre>
 
-    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+    <!-- Modale di errore -->
+    <div class="modal-backdrop" *ngIf="errorMessage">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4>{{ t('dashboard.error.title') || 'Errore' }}</h4>
+          </div>
+          <div class="modal-body">
+            <p>{{ errorMessage }}</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" (click)="closeErrorModal()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

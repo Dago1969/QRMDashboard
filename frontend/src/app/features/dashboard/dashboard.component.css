@@ -1,3 +1,57 @@
+/* Modale errore */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-dialog {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  min-width: 320px;
+  max-width: 90vw;
+  padding: 0;
+  animation: modalIn 0.18s cubic-bezier(.4,0,.2,1);
+}
+
+.modal-content {
+  padding: 0 18px 18px 18px;
+}
+.modal-header {
+  padding: 18px 0 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.modal-body {
+  padding: 12px 0 8px 0;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+@keyframes modalIn {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+/* Evidenzia il messaggio di errore */
+.error {
+  color: #b00020;
+  background: #fff0f0;
+  border: 1px solid #b00020;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 18px;
+  font-weight: 500;
+  font-size: 1rem;
+}
 /* Card raggruppamento client */
 .client-group-card {
   border: 2px solid #b3b3b3;
