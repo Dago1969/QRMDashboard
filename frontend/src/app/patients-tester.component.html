@@ -1,0 +1,41 @@
+<h2>Test servizi QTMPatients</h2>
+<form [formGroup]="searchForm" (ngSubmit)="search()" class="search-form">
+  <label>Nome: <input formControlName="firstName"></label>
+  <label>Cognome: <input formControlName="lastName"></label>
+  <label>Codice fiscale: <input formControlName="fiscalCode"></label>
+  <button type="submit" [disabled]="loading">Cerca</button>
+  <button type="button" (click)="startNewPatient()">Nuovo</button>
+</form>
+
+<div *ngIf="error" class="error">{{ error }}</div>
+
+<table *ngIf="patients.length" class="results">
+  <thead>
+    <tr>
+      <th>Nome</th><th>Cognome</th><th>Codice fiscale</th><th>Email</th><th>Azioni</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let p of patients" [class.selected]="selectedPatient?.id === p.id" (click)="selectPatient(p)">
+      <td>{{ p.firstName }}</td>
+      <td>{{ p.lastName }}</td>
+      <td>{{ p.fiscalCode }}</td>
+      <td>{{ p.email }}</td>
+      <td>
+        <button type="button" *ngIf="p.id != null" (click)="deletePatient(p.id); $event.stopPropagation();">Elimina</button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<div *ngIf="selectedPatient" class="edit-form">
+  <h3>{{ selectedPatient.id ? 'Modifica' : 'Nuovo' }} paziente</h3>
+  <form (ngSubmit)="savePatient()">
+    <label>Nome: <input [(ngModel)]="selectedPatient.firstName" name="firstName"></label>
+    <label>Cognome: <input [(ngModel)]="selectedPatient.lastName" name="lastName"></label>
+    <label>Codice fiscale: <input [(ngModel)]="selectedPatient.fiscalCode" name="fiscalCode"></label>
+    <label>Email: <input [(ngModel)]="selectedPatient.email" name="email"></label>
+    <button type="submit" [disabled]="loading">Salva</button>
+    <button type="button" (click)="clearSelection()">Annulla</button>
+  </form>
+</div>

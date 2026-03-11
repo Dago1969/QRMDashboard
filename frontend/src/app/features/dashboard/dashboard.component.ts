@@ -2,7 +2,7 @@
 // ...existing code...
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -13,7 +13,7 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgIf, NgFor],
+  imports: [NgIf, NgFor, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -157,7 +157,15 @@ export class DashboardComponent implements OnInit {
   }
 
   private buildTenantTargetUrl(rawTenantUrl: string): URL {
-    const targetUrl = new URL(rawTenantUrl);
+    const normalizedUrl = rawTenantUrl?.trim();
+
+    if (!normalizedUrl) {
+      return new URL('/dashboard', window.location.origin);
+    }
+
+    const targetUrl = /^https?:\/\//i.test(normalizedUrl)
+      ? new URL(normalizedUrl)
+      : new URL(normalizedUrl.startsWith('/') ? normalizedUrl : `/${normalizedUrl}`, window.location.origin);
 
     if (targetUrl.pathname === '' || targetUrl.pathname === '/') {
       targetUrl.pathname = '/dashboard';

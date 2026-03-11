@@ -1,0 +1,7 @@
+.search-form, .edit-form { margin-bottom: 1em; }
+.results { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+.results th, .results td { border: 1px solid #ccc; padding: 0.5em; }
+.results tr.selected { background: #e0f7fa; }
+.error { color: #b71c1c; margin: 1em 0; }
+.edit-form { background: #f1f8e9; padding: 1em; border-radius: 4px; }
+button { margin-right: 0.5em; }
