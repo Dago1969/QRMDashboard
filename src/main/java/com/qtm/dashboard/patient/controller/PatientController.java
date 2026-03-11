@@ -1,6 +1,6 @@
 package com.qtm.dashboard.patient.controller;
 
-import com.qtm.dashboard.patient.dto.PatientDto;
+import com.qtm.commonlib.dto.PatientDto;
 import com.qtm.dashboard.patient.service.PatientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -2,7 +2,7 @@ package com.qtm.dashboard.patient.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qtm.dashboard.patient.dto.PatientDto;
+import com.qtm.commonlib.dto.PatientDto;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
