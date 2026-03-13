@@ -48,6 +48,13 @@ public class TenantAppPointerController {
                 .map(pointer -> {
                     log.info("[TenantAppPointerController] Returning tenant pointer id={} clientCode={} clientName={}",
                             pointer.getId(), pointer.getClientCode(), pointer.getClientName());
+                    try {
+                        com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+                        String json = om.writeValueAsString(pointer);
+                        log.info("[TenantAppPointerController] DTO JSON: {}", json);
+                    } catch (Exception e) {
+                        log.warn("[TenantAppPointerController] Errore serializzazione DTO: {}", e.getMessage());
+                    }
                     return ResponseEntity.ok(pointer);
                 })
                 .orElseGet(() -> {

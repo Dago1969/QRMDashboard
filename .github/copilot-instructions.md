@@ -108,6 +108,7 @@ Comunica sempre in modo chiaro e conciso, con un tono amichevole ma professional
 - Ogni testo visibile nelle pagine frontend (FE) **deve essere sempre decodificato tramite i file .properties**: non è mai ammesso testo hardcoded o costanti inline, ma solo chiavi di traduzione presenti nei file messages/properties delle varie lingue e il template deve usare la funzione di traduzione.
 
 ## Architettura applicativa
+- Quando devi compilare o buildare una componente frontend, esegui sempre il comando dalla directory `frontend` del progetto.
 - Utilizza nei progetti sempre lombok per ridurre la verbosità del codice
 ### Comunicazione e conversione dati
 - Utilizzare i DTO e non le Entity per la comunicazione verso l'esterno (servizi REST)

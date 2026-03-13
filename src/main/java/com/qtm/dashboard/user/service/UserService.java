@@ -28,14 +28,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
+    private final UserProvisioningService userProvisioningService;
 
     @Transactional
     public UserDto create(UserDto userDto) {
-        validateUsernameUniqueness(userDto.getUsername(), null);
-        UserEntity entity = userMapper.toEntity(userDto);
-        entity.setRole(findRoleById(userDto.getRoleId()));
-        UserEntity saved = userRepository.save(entity);
-        return userMapper.toDto(saved);
+        return userProvisioningService.provisionUser(userDto);
     }
 
     @Transactional(readOnly = true)
@@ -44,9 +41,10 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserDto> search(String username, String roleId, Long structureId, Boolean enabled) {
+    public List<UserDto> search(String username, String email, String roleId, Long structureId, Boolean enabled) {
         return userRepository.findAll().stream()
             .filter(user -> containsIgnoreCase(user.getUsername(), username))
+            .filter(user -> containsIgnoreCase(user.getEmail(), email))
             .filter(user -> containsIgnoreCase(user.getRole() != null ? user.getRole().getId() : null, roleId))
             .filter(user -> structureId == null || structureId.equals(user.getStructureId()))
             .filter(user -> enabled == null || user.isEnabled() == enabled)

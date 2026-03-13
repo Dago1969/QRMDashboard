@@ -135,8 +135,8 @@ public class TenantAppPointerService {
         log.info("[TenantAppPointerService] Searching tenant pointer by clientCode={}", clientCode);
         return tenantAppPointerRepository.findByClientCode(clientCode)
             .map(entity -> {
-                log.info("[TenantAppPointerService] Repository returned id={} enabled={} clientName={} for clientCode={}",
-                            entity.getId(), entity.isEnabled(), entity.getClientName(), entity.getClientCode());
+                log.info("[TenantAppPointerService] Repository returned id={} enabled={} clientName={} clientCode={} entity={}",
+                            entity.getId(), entity.isEnabled(), entity.getClientName(), entity.getClientCode(), entity);
                 return tenantAppPointerMapper.toDto(entity);
             });
     }

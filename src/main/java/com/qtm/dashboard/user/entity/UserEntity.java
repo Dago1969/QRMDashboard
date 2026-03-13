@@ -45,4 +45,10 @@ public class UserEntity {
      */
     @Column(name = "email", nullable = false, unique = true)
     private String email;
+
+    /**
+     * Hash della password (campo tecnico, non esposto in output pubblico).
+     */
+    @Column(name = "password_hash")
+    private String passwordHash;
 }

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,7 +39,11 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserDto> create(@RequestBody UserDto userDto) {
+    public ResponseEntity<UserDto> create(
+            @RequestBody UserDto userDto,
+            @RequestHeader(name = "X-Selected-Client", required = false) String selectedClient
+    ) {
+        enrichClientId(userDto, selectedClient);
         return ResponseEntity.ok(userService.create(userDto));
     }
 
@@ -50,11 +55,12 @@ public class UserController {
     @GetMapping("/search")
     public ResponseEntity<List<com.qtm.commonlib.dto.UserDto>> search(
             @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email,
             @RequestParam(required = false) String roleId,
             @RequestParam(required = false) Long structureId,
             @RequestParam(required = false) Boolean enabled
     ) {
-        return ResponseEntity.ok(userService.search(username, roleId, structureId, enabled));
+        return ResponseEntity.ok(userService.search(username, email, roleId, structureId, enabled));
     }
 
     @GetMapping("/{id}")
@@ -63,8 +69,27 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserDto> update(@PathVariable Long id, @RequestBody UserDto userDto) {
+    public ResponseEntity<UserDto> update(
+            @PathVariable Long id,
+            @RequestBody UserDto userDto,
+            @RequestHeader(name = "X-Selected-Client", required = false) String selectedClient
+    ) {
+        enrichClientId(userDto, selectedClient);
         return ResponseEntity.ok(userService.update(id, userDto));
+    }
+
+    private void enrichClientId(UserDto userDto, String selectedClient) {
+        if (userDto == null) {
+            return;
+        }
+
+        if (userDto.getClientId() != null && !userDto.getClientId().isBlank()) {
+            return;
+        }
+
+        if (selectedClient != null && !selectedClient.isBlank()) {
+            userDto.setClientId(selectedClient.trim());
+        }
     }
 
     @DeleteMapping("/{id}")

@@ -34,9 +34,15 @@ public class KeycloakAuthService {
     public LoginResponse login(LoginRequest loginRequest) {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("client_id", keycloakProperties.getClientId());
-        formData.add("username", loginRequest.getUsername());
-        formData.add("password", loginRequest.getPassword());
         formData.add("grant_type", keycloakProperties.getGrantType());
+        if (keycloakProperties.getClientSecret() != null && !keycloakProperties.getClientSecret().isBlank()) {
+            formData.add("client_secret", keycloakProperties.getClientSecret());
+        }
+        // Solo per grant_type password aggiungi username/password
+        if ("password".equalsIgnoreCase(keycloakProperties.getGrantType())) {
+            formData.add("username", loginRequest.getUsername());
+            formData.add("password", loginRequest.getPassword());
+        }
 
         try {
             @SuppressWarnings("unchecked")
