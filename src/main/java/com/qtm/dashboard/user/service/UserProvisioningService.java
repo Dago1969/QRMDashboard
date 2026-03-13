@@ -16,6 +16,7 @@ import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.LinkedHashSet;
 import java.util.stream.Stream;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -54,21 +56,27 @@ public class UserProvisioningService {
     public UserDto provisionUser(UserDto userDto) {
         String normalizedUsername = normalizeRequired(userDto.getUsername(), "Username obbligatorio");
         String requestedClientId = resolveRequestedClientId(userDto);
+        String generatedPassword = generatePassword();
 
         Optional<UserEntity> existingDbUser = userRepository.findByUsernameIgnoreCase(normalizedUsername);
 
         Keycloak keycloak = buildAdminClient();
         try {
             RealmResource realmResource = keycloak.realm(requiredRealm());
-            resolveClient(realmResource, requestedClientId);
+            ClientRepresentation requestedClient = resolveClient(realmResource, requestedClientId);
+            List<String> requestedClientRoleNames = resolveRequestedClientRoleNames(userDto.getRoleId());
 
-            UserResource keycloakUserResource = upsertKeycloakUser(realmResource, userDto, normalizedUsername, requestedClientId);
+            UserResource keycloakUserResource = upsertKeycloakUser(
+                    realmResource,
+                    userDto,
+                    normalizedUsername,
+                    requestedClient,
+                    requestedClientRoleNames);
 
-            String generatedPassword = generatePassword();
             log.info("[UserProvisioningService] Password generata per username={}: {}", normalizedUsername, generatedPassword);
             applyPasswordWithoutRequiredChange(keycloakUserResource, generatedPassword);
 
-            UserEntity persistedEntity = existingDbUser.orElseGet(() -> insertIntoDatabase(userDto, normalizedUsername));
+                    UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
 
             UserDto result = userMapper.toDto(persistedEntity);
             result.setClientId(requestedClientId);
@@ -122,17 +130,21 @@ public class UserProvisioningService {
     private UserResource upsertKeycloakUser(RealmResource realmResource,
                                             UserDto userDto,
                                             String normalizedUsername,
-                                            String requestedClientId) {
+                                            ClientRepresentation requestedClient,
+                                            List<String> requestedClientRoleNames) {
+        String requestedClientId = requestedClient != null ? requestedClient.getClientId() : null;
         UserRepresentation existingUser = findKeycloakUser(realmResource, normalizedUsername);
         if (existingUser == null) {
             String createdUserId = createKeycloakUser(realmResource, userDto, normalizedUsername, requestedClientId);
             UserResource createdUserResource = realmResource.users().get(createdUserId);
             synchronizeClientAssociation(createdUserResource, requestedClientId);
+            synchronizeClientRoleAssociation(createdUserResource, requestedClient, requestedClientRoleNames);
             return createdUserResource;
         }
 
         UserResource existingUserResource = realmResource.users().get(existingUser.getId());
         synchronizeExistingUser(existingUserResource, userDto, normalizedUsername, requestedClientId);
+        synchronizeClientRoleAssociation(existingUserResource, requestedClient, requestedClientRoleNames);
         return existingUserResource;
     }
 
@@ -235,6 +247,161 @@ public class UserProvisioningService {
         }
     }
 
+    /**
+     * Assicura un mapping client-level reale su Keycloak, cosi' il client richiesto compare in resource_access.
+     */
+    private void synchronizeClientRoleAssociation(UserResource userResource,
+                                                  ClientRepresentation requestedClient,
+                                                  List<String> requestedClientRoleNames) {
+        if (requestedClient == null || requestedClient.getId() == null) {
+            return;
+        }
+
+        List<RoleRepresentation> currentClientRoles = Optional.ofNullable(
+                userResource.roles().clientLevel(requestedClient.getId()).listAll())
+            .orElse(List.of());
+
+        List<RoleRepresentation> availableRoles = Optional.ofNullable(
+                userResource.roles().clientLevel(requestedClient.getId()).listAvailable())
+            .orElse(List.of());
+        List<RoleRepresentation> rolesToAssign = resolveClientRolesToAssign(
+                requestedClient,
+                currentClientRoles,
+                availableRoles,
+                requestedClientRoleNames);
+        if (rolesToAssign.isEmpty()) {
+            log.info("[UserProvisioningService] Nessun nuovo ruolo client da assegnare per client {} e utente corrente",
+                    requestedClient.getClientId());
+            return;
+        }
+
+        userResource.roles().clientLevel(requestedClient.getId()).add(rolesToAssign);
+        log.info("[UserProvisioningService] Associati al client {} i ruoli {}",
+                requestedClient.getClientId(),
+                rolesToAssign.stream().map(RoleRepresentation::getName).toList());
+    }
+
+    private List<RoleRepresentation> resolveClientRolesToAssign(ClientRepresentation requestedClient,
+                                                                List<RoleRepresentation> currentClientRoles,
+                                                                List<RoleRepresentation> availableRoles,
+                                                                List<String> requestedClientRoleNames) {
+        List<String> normalizedRequestedRoleNames = Optional.ofNullable(requestedClientRoleNames)
+                .orElse(List.of())
+                .stream()
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .toList();
+        if (!normalizedRequestedRoleNames.isEmpty()) {
+            List<RoleRepresentation> explicitRoles = findMatchingRoles(availableRoles, normalizedRequestedRoleNames);
+            if (explicitRoles.isEmpty()) {
+                throw new ResponseStatusException(
+                        BAD_REQUEST,
+                        "Ruolo client Keycloak non trovato per client " + requestedClient.getClientId()
+                                + ": richiesto uno tra " + normalizedRequestedRoleNames
+                                + ", disponibili " + availableRoles.stream()
+                                        .map(RoleRepresentation::getName)
+                                        .filter(Objects::nonNull)
+                                        .toList());
+            }
+
+            return excludeAlreadyAssignedRoles(explicitRoles, currentClientRoles);
+        }
+
+        if (availableRoles == null || availableRoles.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> preferredRoleNames = Stream.concat(
+                Stream.of(Optional.ofNullable(requestedClient.getDefaultRoles()).orElse(new String[0])),
+                Stream.of("user", "default", "access", requestedClient.getClientId()))
+            .filter(Objects::nonNull)
+            .map(this::normalizeRoleName)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+        List<RoleRepresentation> preferredRoles = findMatchingRoles(availableRoles, preferredRoleNames);
+        if (!preferredRoles.isEmpty()) {
+            return excludeAlreadyAssignedRoles(preferredRoles, currentClientRoles);
+        }
+
+        List<RoleRepresentation> nonPrivilegedRoles = availableRoles.stream()
+                .filter(Objects::nonNull)
+                .filter(role -> isLikelyAssociationRole(role.getName()))
+                .toList();
+        if (nonPrivilegedRoles.size() == 1) {
+            return excludeAlreadyAssignedRoles(nonPrivilegedRoles, currentClientRoles);
+        }
+
+        return List.of();
+    }
+
+    private List<String> resolveRequestedClientRoleNames(String roleId) {
+        String normalizedRoleId = normalizeNullable(roleId);
+        if (normalizedRoleId == null) {
+            return List.of();
+        }
+
+        RoleEntity requestedRole = findRoleById(normalizedRoleId);
+        LinkedHashSet<String> candidateRoleNames = Stream.of(
+                    requestedRole.getId(),
+                    requestedRole.getName(),
+                    requestedRole.getDescription())
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        return List.copyOf(candidateRoleNames);
+    }
+
+    private List<RoleRepresentation> findMatchingRoles(List<RoleRepresentation> availableRoles,
+                                                       List<String> normalizedRoleNames) {
+        if (availableRoles == null || availableRoles.isEmpty() || normalizedRoleNames == null || normalizedRoleNames.isEmpty()) {
+            return List.of();
+        }
+
+        return availableRoles.stream()
+                .filter(Objects::nonNull)
+                .filter(role -> normalizedRoleNames.contains(normalizeRoleName(role.getName())))
+                .toList();
+    }
+
+    private List<RoleRepresentation> excludeAlreadyAssignedRoles(List<RoleRepresentation> candidateRoles,
+                                                                 List<RoleRepresentation> currentClientRoles) {
+        List<String> currentRoleNames = Optional.ofNullable(currentClientRoles)
+                .orElse(List.of())
+                .stream()
+                .map(RoleRepresentation::getName)
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .toList();
+
+        return Optional.ofNullable(candidateRoles)
+                .orElse(List.of())
+                .stream()
+                .filter(role -> !currentRoleNames.contains(normalizeRoleName(role.getName())))
+                .toList();
+    }
+
+    private boolean isLikelyAssociationRole(String roleName) {
+        String normalizedRoleName = normalizeRoleName(roleName);
+        if (normalizedRoleName == null) {
+            return false;
+        }
+
+        return !normalizedRoleName.contains("admin")
+                && !normalizedRoleName.contains("manage")
+                && !normalizedRoleName.contains("owner")
+                && !normalizedRoleName.contains("uma");
+    }
+
+    private String normalizeRoleName(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return null;
+        }
+
+        return roleName.trim().toLowerCase(Locale.ROOT);
+    }
+
     private void applyPasswordWithoutRequiredChange(UserResource userResource, String generatedPassword) {
         CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
         credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
@@ -250,10 +417,17 @@ public class UserProvisioningService {
         }
     }
 
-    private UserEntity insertIntoDatabase(UserDto userDto, String normalizedUsername) {
-        UserEntity entity = userMapper.toEntity(userDto);
+    private UserEntity upsertDatabaseUser(UserDto userDto,
+                                          String normalizedUsername,
+                                          String generatedPassword,
+                                          UserEntity existingDbUser) {
+        UserEntity entity = existingDbUser != null ? existingDbUser : userMapper.toEntity(userDto);
         entity.setUsername(normalizedUsername);
+        entity.setEnabled(userDto.isEnabled());
+        entity.setEmail(normalizeNullable(userDto.getEmail()));
+        entity.setStructureId(userDto.getStructureId());
         entity.setRole(findRoleById(userDto.getRoleId()));
+        entity.setPasswordHash(generatedPassword);
         return userRepository.save(entity);
     }
 
