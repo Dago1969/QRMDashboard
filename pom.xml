@@ -68,6 +68,12 @@
             <artifactId>qtm-common-lib</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+            <!-- ModelMapper for DTO mapping -->
+            <dependency>
+                <groupId>org.modelmapper</groupId>
+                <artifactId>modelmapper</artifactId>
+                <version>3.1.1</version>
+            </dependency>
     </dependencies>
 
     <build>

@@ -1,0 +1,1 @@
+Vecchie DTO UserDto e RoleDto eliminate. Usare solo quelle centralizzate in QTMCommonLib.

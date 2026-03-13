@@ -1,62 +1,137 @@
 package com.qtm.dashboard.user.service;
 
 import com.qtm.dashboard.user.dto.RegisterRequest;
-import com.qtm.dashboard.user.dto.UserDto;
+import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.user.entity.RoleEntity;
 import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
+import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.Locale;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
- * Service per l'orchestrazione repository/mapper nella gestione utenti.
+ * Service orchestratore CRUD utenti centralizzati.
  */
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
-    private final RoleService roleService;
-    private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
     private final UserMapper userMapper;
 
-    public UserService(UserRepository userRepository,
-                       RoleService roleService,
-                       PasswordEncoder passwordEncoder,
-                       UserMapper userMapper) {
-        this.userRepository = userRepository;
-        this.roleService = roleService;
-        this.passwordEncoder = passwordEncoder;
-        this.userMapper = userMapper;
-    }
-
-    @SuppressWarnings("null")
     @Transactional
-    public UserDto registerUser(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new ResponseStatusException(CONFLICT, "Username già presente");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ResponseStatusException(CONFLICT, "Email già presente");
-        }
-
-        Set<RoleEntity> roles = roleService.findOrCreateRoles(request.getRoles());
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-        UserEntity toSave = userMapper.toEntity(request.getUsername(), request.getEmail(), encodedPassword, roles);
-        UserEntity saved = Objects.requireNonNull(userRepository.save(toSave));
+    public UserDto create(UserDto userDto) {
+        validateUsernameUniqueness(userDto.getUsername(), null);
+        UserEntity entity = userMapper.toEntity(userDto);
+        entity.setRole(findRoleById(userDto.getRoleId()));
+        UserEntity saved = userRepository.save(entity);
         return userMapper.toDto(saved);
     }
 
     @Transactional(readOnly = true)
-    public List<UserDto> listUsers() {
+    public List<UserDto> findAll() {
         return userRepository.findAll().stream().map(userMapper::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDto> search(String username, String roleId, Long structureId, Boolean enabled) {
+        return userRepository.findAll().stream()
+            .filter(user -> containsIgnoreCase(user.getUsername(), username))
+            .filter(user -> containsIgnoreCase(user.getRole() != null ? user.getRole().getId() : null, roleId))
+            .filter(user -> structureId == null || structureId.equals(user.getStructureId()))
+            .filter(user -> enabled == null || user.isEnabled() == enabled)
+            .map(userMapper::toDto)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UserDto findById(Long id) {
+        return userMapper.toDto(findEntityById(id));
+    }
+
+    @Transactional
+    public UserDto update(Long id, UserDto userDto) {
+        UserEntity current = findEntityById(id);
+        validateUsernameUniqueness(userDto.getUsername(), id);
+        current.setUsername(userDto.getUsername());
+        current.setEnabled(userDto.isEnabled());
+        current.setRole(findRoleById(userDto.getRoleId()));
+        current.setStructureId(userDto.getStructureId());
+        return userMapper.toDto(userRepository.save(current));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        userRepository.delete(findEntityById(id));
+    }
+
+    @Transactional
+    public UserDto registerUser(RegisterRequest request) {
+        UserDto userDto = new UserDto();
+        userDto.setUsername(request.getUsername());
+        userDto.setEnabled(true);
+        userDto.setRoleId(resolveRegistrationRoleId(request));
+        return create(userDto);
+    }
+
+    private UserEntity findEntityById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente non trovato"));
+    }
+
+    private boolean containsIgnoreCase(String source, String filter) {
+        if (filter == null || filter.isBlank()) {
+            return true;
+        }
+
+        if (source == null) {
+            return false;
+        }
+
+        return source.toLowerCase(Locale.ROOT).contains(filter.toLowerCase(Locale.ROOT));
+    }
+
+    private RoleEntity findRoleById(String roleId) {
+        if (roleId == null || roleId.isBlank()) {
+            return null;
+        }
+
+        return roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Ruolo non trovato"));
+    }
+
+    private void validateUsernameUniqueness(String username, Long currentId) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        userRepository.findByUsernameIgnoreCase(username.trim())
+                .ifPresent(existing -> {
+                    if (currentId == null || !existing.getId().equals(currentId)) {
+                        throw new ResponseStatusException(CONFLICT, "Username gia presente: " + username.trim());
+                    }
+                });
+    }
+
+    private String resolveRegistrationRoleId(RegisterRequest request) {
+        if (request.getRoles() == null || request.getRoles().isEmpty()) {
+            return "USER";
+        }
+
+        return request.getRoles().stream()
+                .filter(role -> role != null && !role.isBlank())
+                .map(role -> role.trim().toUpperCase(Locale.ROOT))
+                .findFirst()
+                .orElse("USER");
     }
 }

@@ -1,6 +1,6 @@
 // ...existing code...
 // ...existing code...
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
@@ -21,11 +21,17 @@ export class DashboardComponent implements OnInit {
   message = '';
   username = '';
   subject = '';
-  // Raggruppamento per la view: [{ client, resourceRoles: string[], realmRoles: string[] }]
-  groupedClientRoles: Array<{ client: string; resourceRoles: string[]; realmRoles: string[] }> = [];
+  // Raggruppamento per la view: [{ client, resourceRoles: string[], realmRoles: string[], project: string }]
+  groupedClientRoles: Array<{ client: string; resourceRoles: string[]; realmRoles: string[]; project: string }> = [];
   decodedClaimsPretty = '';
   errorMessage = '';
+  isMessageFading = false;
+  isErrorFading = false;
   translations: Record<string, string> = {};
+  private messageFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private messageClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private errorFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private errorClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly authService: AuthService,
@@ -43,7 +49,7 @@ export class DashboardComponent implements OnInit {
 
     this.authService.getDashboardData().subscribe({
       next: (response) => {
-        this.message = response.message;
+        this.showSuccessMessage(response.message);
         this.username = response.username;
         this.subject = response.subject;
 
@@ -64,20 +70,27 @@ export class DashboardComponent implements OnInit {
           const resourceRoles = (response.clientRoles?.[client] ?? []).slice().sort();
           // Realm roles ordinati
           const realmRoles = (customRealmRoles ?? []).slice().sort();
+          // project dinamico: qui lo valorizzo con il nome del client, ma puoi personalizzare la logica
+          const project = client;
           return {
             client,
             resourceRoles,
-            realmRoles
+            realmRoles,
+            project
           };
         });
 
         this.decodedClaimsPretty = JSON.stringify(response.decodedClaims ?? {}, null, 2);
       },
       error: () => {
-        this.errorMessage = this.t('dashboard.error.invalidToken');
-        this.cdr.detectChanges();
+        this.showErrorMessage(this.t('dashboard.error.invalidToken'));
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearMessageTimers();
+    this.clearErrorTimers();
   }
 
   logout(): void {
@@ -89,11 +102,11 @@ export class DashboardComponent implements OnInit {
     return this.translations[key] ?? key;
   }
 
-  openTenantsDashboard(client: string, role: string): void {
+  openTenantsDashboard(client: string, role: string, project: string): void {
     const token = this.authService.getToken();
 
     if (!token) {
-      this.errorMessage = this.t('dashboard.error.jwtMissing');
+      this.showErrorMessage(this.t('dashboard.error.jwtMissing'));
       return;
     }
 
@@ -105,19 +118,92 @@ export class DashboardComponent implements OnInit {
             targetUrl.searchParams.set('token', token);
             targetUrl.searchParams.set('client', client);
             targetUrl.searchParams.set('role', role);
+            targetUrl.searchParams.set('project', project);
             window.location.href = targetUrl.toString();
           },
           error: (error: HttpErrorResponse) => {
-            this.errorMessage = this.getTenantResolutionErrorMessage(error, role, client);
-            this.cdr.detectChanges();
+            this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
           }
         });
       },
       error: (error: HttpErrorResponse) => {
-        this.errorMessage = this.getTenantResolutionErrorMessage(error, role, client);
-        this.cdr.detectChanges();
+        this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
       }
     });
+  }
+
+  /**
+   * Mostra un banner verde temporaneo e lo dissolve automaticamente dopo 10 secondi.
+   */
+  private showSuccessMessage(message: string): void {
+    this.clearMessageTimers();
+    this.message = message;
+    this.isMessageFading = false;
+
+    if (!message) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.messageFadeTimeoutId = setTimeout(() => {
+      this.isMessageFading = true;
+      this.cdr.detectChanges();
+    }, 9000);
+
+    this.messageClearTimeoutId = setTimeout(() => {
+      this.message = '';
+      this.isMessageFading = false;
+      this.cdr.detectChanges();
+    }, 10000);
+  }
+
+  /**
+   * Mostra un banner rosso temporaneo e lo dissolve automaticamente dopo 15 secondi.
+   */
+  private showErrorMessage(message: string): void {
+    this.clearErrorTimers();
+    this.errorMessage = message;
+    this.isErrorFading = false;
+
+    if (!message) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.errorFadeTimeoutId = setTimeout(() => {
+      this.isErrorFading = true;
+      this.cdr.detectChanges();
+    }, 14000);
+
+    this.errorClearTimeoutId = setTimeout(() => {
+      this.errorMessage = '';
+      this.isErrorFading = false;
+      this.cdr.detectChanges();
+    }, 15000);
+
+    this.cdr.detectChanges();
+  }
+
+  private clearMessageTimers(): void {
+    if (this.messageFadeTimeoutId) {
+      clearTimeout(this.messageFadeTimeoutId);
+      this.messageFadeTimeoutId = null;
+    }
+    if (this.messageClearTimeoutId) {
+      clearTimeout(this.messageClearTimeoutId);
+      this.messageClearTimeoutId = null;
+    }
+  }
+
+  private clearErrorTimers(): void {
+    if (this.errorFadeTimeoutId) {
+      clearTimeout(this.errorFadeTimeoutId);
+      this.errorFadeTimeoutId = null;
+    }
+    if (this.errorClearTimeoutId) {
+      clearTimeout(this.errorClearTimeoutId);
+      this.errorClearTimeoutId = null;
+    }
   }
 
   private getTenantResolutionErrorMessage(error: HttpErrorResponse, role: string, client?: string): string {
@@ -178,7 +264,9 @@ export class DashboardComponent implements OnInit {
    * Chiude la modale di errore e resetta il messaggio.
    */
   closeErrorModal(): void {
+    this.clearErrorTimers();
     this.errorMessage = '';
+    this.isErrorFading = false;
     this.cdr.detectChanges();
   }
 }

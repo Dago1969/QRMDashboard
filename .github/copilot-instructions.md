@@ -1,7 +1,22 @@
+## 🚦 Committa tutto
+
+Quando l’utente chiede "committa tutto" devi SEMPRE:
+
+1. Eseguire `git add .` su tutti i progetti della workspace.
+2. Eseguire `git commit -m "<messaggio>"` su tutti i progetti (usa un messaggio coerente con le modifiche).
+3. Eseguire `git push` su tutti i progetti.
+
+Devi eseguire questi comandi in sequenza, per ogni progetto, e confermare l’avvenuto push.
 # Istruzioni per GitHub Copilot Chat
 
 ## Stile di interazione
 - Quando ti uso la risposta deve sempre iniziare con "ok Boss QTM"
+
+## Glossario workspace
+- `QTMDB` = `QTMDashboard`
+- `TENAPP` = `TENANTS-APP`
+- `QTMPAT` = `QTMPatients`
+- `QTMCL` = `QTMCommonLib`
 
 ### 🚀 Potenziamento della Modalità Agente
 
@@ -90,19 +105,7 @@ Leggi attentamente il problema e pensa in modo critico a ciò che è richiesto. 
 
 Comunica sempre in modo chiaro e conciso, con un tono amichevole ma professionale.
 
-## Principi generali di programmazione
-- Se devi lanciare comandi maven usa sempre il comando mvn
-- Ovunque possibile, utilizzare le Java Stream API
-- Preferire uno stile di codice Java funzionale
-- Rispettare il principio di single responsibility
-- Utilizzare le feature di Java 17 e successive come toList() negli stream,
-  RoundingMode.HALF_UP, non usare il divide deprecato in BigDecimal, ecc.
-- Preferire le nuove API rispetto a quelle deprecate
-- Dopo ogni modifica elimina sempre gli import inutilizzati
-- quando sposti un metodo da una classe a un'altra, assicurati di spostare anche i commenti associati al metodo, in modo che il codice rimanga chiaro e comprensibile. Aggiorna i commenti se necessario per riflettere il nuovo contesto del metodo.
-- verificare sempre di non aver accidentalmente modificato il comportamento del codice durante le modifiche, specialmente quando si spostano metodi o si cambiano le firme dei metodi. 
-- quando si spostano metodi tra classi che utilizzano variabili di istanza non cambiarne mai il tipo, per evitare problemi di compatibilità e di comportamento imprevisto.
-- verificare sempre che il progetto/solution/workspace sia compilabile dopo ogni modifica, anche se non si è apportate modifiche al codice sorgente. Questo aiuta a garantire che le dipendenze siano aggiornate e che il progetto sia in uno stato funzionante.
+- Ogni testo visibile nelle pagine frontend (FE) **deve essere sempre decodificato tramite i file .properties**: non è mai ammesso testo hardcoded o costanti inline, ma solo chiavi di traduzione presenti nei file messages/properties delle varie lingue e il template deve usare la funzione di traduzione.
 
 ## Architettura applicativa
 - Utilizza nei progetti sempre lombok per ridurre la verbosità del codice

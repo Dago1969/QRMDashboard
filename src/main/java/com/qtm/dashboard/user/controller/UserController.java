@@ -1,14 +1,20 @@
 package com.qtm.dashboard.user.controller;
 
-import com.qtm.dashboard.user.dto.UserDto;
+import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.user.service.UserService;
-import org.springframework.http.ResponseEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -17,7 +23,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Controller REST protetto per consultazione utenti e dati dashboard.
+ * Controller REST CRUD utenti centralizzati e dati dashboard.
  */
 @RestController
 @RequestMapping("/api/users")
@@ -31,9 +37,40 @@ public class UserController {
         this.userService = userService;
     }
 
+    @PostMapping
+    public ResponseEntity<UserDto> create(@RequestBody UserDto userDto) {
+        return ResponseEntity.ok(userService.create(userDto));
+    }
+
     @GetMapping
-    public ResponseEntity<List<UserDto>> getUsers() {
-        return ResponseEntity.ok(userService.listUsers());
+    public ResponseEntity<List<com.qtm.commonlib.dto.UserDto>> findAll() {
+        return ResponseEntity.ok(userService.findAll());
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<com.qtm.commonlib.dto.UserDto>> search(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String roleId,
+            @RequestParam(required = false) Long structureId,
+            @RequestParam(required = false) Boolean enabled
+    ) {
+        return ResponseEntity.ok(userService.search(username, roleId, structureId, enabled));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDto> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDto> update(@PathVariable Long id, @RequestBody UserDto userDto) {
+        return ResponseEntity.ok(userService.update(id, userDto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/dashboard")
