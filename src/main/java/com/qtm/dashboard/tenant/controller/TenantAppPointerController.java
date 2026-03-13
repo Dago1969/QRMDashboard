@@ -6,6 +6,7 @@ import com.qtm.dashboard.tenant.dto.TenantResolutionDto;
 import com.qtm.dashboard.tenant.service.TenantAppPointerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +28,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tenant-app-pointers")
 @RequiredArgsConstructor
+@Slf4j
 public class TenantAppPointerController {
 
     private final TenantAppPointerService tenantAppPointerService;
@@ -34,6 +36,24 @@ public class TenantAppPointerController {
     @GetMapping
     public ResponseEntity<List<TenantAppPointerDto>> listAll() {
         return ResponseEntity.ok(tenantAppPointerService.listAll());
+    }
+
+    /**
+     * Ricerca puntamento per clientCode. Restituisce 200 con il DTO se presente, 404 se assente.
+     */
+    @GetMapping("/by-client/{clientCode}")
+    public ResponseEntity<TenantAppPointerDto> getByClientCode(@PathVariable String clientCode) {
+        log.info("[TenantAppPointerController] Received lookup request for clientCode={}", clientCode);
+        return tenantAppPointerService.findByClientCode(clientCode)
+                .map(pointer -> {
+                    log.info("[TenantAppPointerController] Returning tenant pointer id={} clientCode={} clientName={}",
+                            pointer.getId(), pointer.getClientCode(), pointer.getClientName());
+                    return ResponseEntity.ok(pointer);
+                })
+                .orElseGet(() -> {
+                    log.warn("[TenantAppPointerController] No tenant pointer found for clientCode={}", clientCode);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @GetMapping("/{id}")
@@ -61,6 +81,9 @@ public class TenantAppPointerController {
     @GetMapping("/resolve/{clientCode}")
     public ResponseEntity<TenantResolutionDto> resolveTenantUrl(@PathVariable String clientCode,
                                                                 @AuthenticationPrincipal Jwt jwt) {
+        log.info("[TenantAppPointerController] Resolve URL request for clientCode={} subject={}",
+                clientCode,
+                jwt != null ? jwt.getSubject() : "anonymous");
         return ResponseEntity.ok(tenantAppPointerService.resolveActiveTenantUrlForJwt(clientCode, jwt));
     }
 }

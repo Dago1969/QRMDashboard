@@ -1,10 +1,10 @@
-<h2>Test servizi QTMPatients</h2>
+<h2>{{ t('patientsTester.title') }}</h2>
 <form [formGroup]="searchForm" (ngSubmit)="search()" class="search-form">
-  <label>Nome: <input formControlName="firstName"></label>
-  <label>Cognome: <input formControlName="lastName"></label>
-  <label>Codice fiscale: <input formControlName="fiscalCode"></label>
-  <button type="submit" [disabled]="loading">Cerca</button>
-  <button type="button" (click)="startNewPatient()">Nuovo</button>
+  <label>{{ t('patientsTester.field.firstName') }}: <input formControlName="firstName"></label>
+  <label>{{ t('patientsTester.field.lastName') }}: <input formControlName="lastName"></label>
+  <label>{{ t('patientsTester.field.fiscalCode') }}: <input formControlName="fiscalCode"></label>
+  <button type="submit" [disabled]="loading">{{ t('patientsTester.action.search') }}</button>
+  <button type="button" (click)="startNewPatient()">{{ t('patientsTester.action.new') }}</button>
 </form>
 
 <div *ngIf="error" class="error">{{ error }}</div>
@@ -12,7 +12,7 @@
 <table *ngIf="patients.length" class="results">
   <thead>
     <tr>
-      <th>Nome</th><th>Cognome</th><th>Codice fiscale</th><th>Email</th><th>Azioni</th>
+      <th>{{ t('patientsTester.field.firstName') }}</th><th>{{ t('patientsTester.field.lastName') }}</th><th>{{ t('patientsTester.field.fiscalCode') }}</th><th>{{ t('patientsTester.field.email') }}</th><th>{{ t('patientsTester.results.actions') }}</th>
     </tr>
   </thead>
   <tbody>
@@ -22,20 +22,20 @@
       <td>{{ p.fiscalCode }}</td>
       <td>{{ p.email }}</td>
       <td>
-        <button type="button" *ngIf="p.id != null" (click)="deletePatient(p.id); $event.stopPropagation();">Elimina</button>
+        <button type="button" *ngIf="p.id != null" (click)="deletePatient(p.id); $event.stopPropagation();">{{ t('patientsTester.action.delete') }}</button>
       </td>
     </tr>
   </tbody>
 </table>
 
 <div *ngIf="selectedPatient" class="edit-form">
-  <h3>{{ selectedPatient.id ? 'Modifica' : 'Nuovo' }} paziente</h3>
+  <h3>{{ selectedPatient.id ? t('patientsTester.title.edit') : t('patientsTester.title.new') }}</h3>
   <form (ngSubmit)="savePatient()">
-    <label>Nome: <input [(ngModel)]="selectedPatient.firstName" name="firstName"></label>
-    <label>Cognome: <input [(ngModel)]="selectedPatient.lastName" name="lastName"></label>
-    <label>Codice fiscale: <input [(ngModel)]="selectedPatient.fiscalCode" name="fiscalCode"></label>
-    <label>Email: <input [(ngModel)]="selectedPatient.email" name="email"></label>
-    <button type="submit" [disabled]="loading">Salva</button>
-    <button type="button" (click)="clearSelection()">Annulla</button>
+    <label>{{ t('patientsTester.field.firstName') }}: <input [(ngModel)]="selectedPatient.firstName" name="firstName"></label>
+    <label>{{ t('patientsTester.field.lastName') }}: <input [(ngModel)]="selectedPatient.lastName" name="lastName"></label>
+    <label>{{ t('patientsTester.field.fiscalCode') }}: <input [(ngModel)]="selectedPatient.fiscalCode" name="fiscalCode"></label>
+    <label>{{ t('patientsTester.field.email') }}: <input [(ngModel)]="selectedPatient.email" name="email"></label>
+    <button type="submit" [disabled]="loading">{{ t('patientsTester.action.save') }}</button>
+    <button type="button" (click)="clearSelection()">{{ t('patientsTester.action.cancel') }}</button>
   </form>
 </div>

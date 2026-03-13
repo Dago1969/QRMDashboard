@@ -44,10 +44,10 @@
 
     <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
       <div class="feedback-banner-content">
-        <strong>{{ t('dashboard.error.title') || 'Errore' }}</strong>
+        <strong>{{ t('dashboard.error.title') }}</strong>
         <p>{{ errorMessage }}</p>
       </div>
-      <button class="btn btn-primary btn-sm" (click)="closeErrorModal()">OK</button>
+      <button class="btn btn-primary btn-sm" (click)="closeErrorModal()">{{ t('common.ok') }}</button>
     </div>
   </div>
 </div>

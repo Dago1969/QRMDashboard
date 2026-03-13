@@ -1,3 +1,4 @@
+   
 package com.qtm.dashboard.tenant.service;
 
 import com.qtm.dashboard.tenant.dto.TenantAppPointerDto;
@@ -7,12 +8,14 @@ import com.qtm.dashboard.tenant.entity.TenantAppPointerEntity;
 import com.qtm.dashboard.tenant.mapper.TenantAppPointerMapper;
 import com.qtm.dashboard.tenant.repository.TenantAppPointerRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
@@ -24,6 +27,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TenantAppPointerService {
 
     private final TenantAppPointerRepository tenantAppPointerRepository;
@@ -67,11 +71,15 @@ public class TenantAppPointerService {
 
     @Transactional(readOnly = true)
     public TenantResolutionDto resolveActiveTenantUrl(String clientCode) {
+        log.info("[TenantAppPointerService] Resolving active tenant URL for clientCode={}", clientCode);
         TenantAppPointerEntity pointer = tenantAppPointerRepository.findByClientCodeAndEnabledTrue(clientCode)
                 .orElseThrow(() -> new ResponseStatusException(
                         NOT_FOUND,
                         "Nessun puntamento attivo trovato per client_code: " + clientCode
                 ));
+
+        log.info("[TenantAppPointerService] Found active tenant pointer id={} url={} for clientCode={}",
+            pointer.getId(), pointer.getTenantAppUrl(), pointer.getClientCode());
 
         return TenantResolutionDto.builder()
                 .clientCode(pointer.getClientCode())
@@ -81,7 +89,13 @@ public class TenantAppPointerService {
 
     @Transactional(readOnly = true)
     public TenantResolutionDto resolveActiveTenantUrlForJwt(String clientCode, Jwt jwt) {
+        log.info("[TenantAppPointerService] Validating JWT access for clientCode={} subject={}",
+            clientCode,
+            jwt != null ? jwt.getSubject() : "anonymous");
         if (!isClientInResourceAccess(jwt, clientCode)) {
+            log.warn("[TenantAppPointerService] JWT resource_access does not contain clientCode={} for subject={}",
+                clientCode,
+                jwt != null ? jwt.getSubject() : "anonymous");
             throw new ResponseStatusException(
                     FORBIDDEN,
                     "Il client_code non e presente in resource_access: " + clientCode
@@ -111,5 +125,19 @@ public class TenantAppPointerService {
             return false;
         }
         return ((Map<String, Object>) resourceAccess).containsKey(clientCode);
+    }
+
+    /**
+     * Ricerca puntamento per clientCode. Restituisce Optional vuoto se non trovato.
+     */
+    @Transactional(readOnly = true)
+    public Optional<TenantAppPointerDto> findByClientCode(String clientCode) {
+        log.info("[TenantAppPointerService] Searching tenant pointer by clientCode={}", clientCode);
+        return tenantAppPointerRepository.findByClientCode(clientCode)
+            .map(entity -> {
+                log.info("[TenantAppPointerService] Repository returned id={} enabled={} clientName={} for clientCode={}",
+                            entity.getId(), entity.isEnabled(), entity.getClientName(), entity.getClientCode());
+                return tenantAppPointerMapper.toDto(entity);
+            });
     }
 }

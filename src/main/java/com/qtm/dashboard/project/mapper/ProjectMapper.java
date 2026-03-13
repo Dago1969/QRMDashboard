@@ -19,6 +19,8 @@ public class ProjectMapper {
         dto.setDescrizione(entity.getDescrizione());
         dto.setDataInizio(entity.getDataInizio());
         dto.setDataFine(entity.getDataFine());
+        // Log di mapping DTO
+        org.slf4j.LoggerFactory.getLogger(ProjectMapper.class).debug("[ProjectMapper] toDto: entity={}, dto={}", entity, dto);
         return dto;
     }
     
@@ -30,6 +32,7 @@ public class ProjectMapper {
         entity.setDescrizione(dto.getDescrizione());
         entity.setDataInizio(dto.getDataInizio());
         entity.setDataFine(dto.getDataFine());
+        org.slf4j.LoggerFactory.getLogger(ProjectMapper.class).debug("[ProjectMapper] toEntity: dto={}, entity={}", dto, entity);
         return entity;
     }
 }

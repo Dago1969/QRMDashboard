@@ -35,6 +35,7 @@ public class ProjectService {
     public ProjectDto create(ProjectDto projectDto) {
         log.info("Avvio creazione project centralizzato: code={}, tenant={}, tenantId={}",
             projectDto.getCode(), projectDto.getTenant(), projectDto.getTenantId());
+        log.debug("[ProjectService] ProjectDto ricevuto: {}", projectDto);
         String normalizedCode = normalizeRequired(projectDto.getCode(), "Il codice progetto e obbligatorio");
         TenantAppPointerEntity tenant = resolveTenant(projectDto);
         validateUniqueCode(normalizedCode, tenant.getId(), null);
@@ -45,6 +46,7 @@ public class ProjectService {
         entity.setDescrizione(projectDto.getDescrizione());
         entity.setDataInizio(projectDto.getDataInizio());
         entity.setDataFine(projectDto.getDataFine());
+        log.debug("[ProjectService] Entity da salvare: {}", entity);
         ProjectEntity savedProject = projectRepository.save(entity);
         log.info("Project centralizzato creato: id={}, code={}, tenantId={}",
             savedProject.getId(), savedProject.getCode(), tenant.getId());

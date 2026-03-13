@@ -32,7 +32,8 @@ public class ProjectController {
     @PostMapping
     public ResponseEntity<ProjectDto> create(@RequestBody ProjectDto projectDto) {
         log.info("Ricevuta richiesta creazione project centralizzato: code={}, tenant={}, tenantId={}",
-                projectDto.getCode(), projectDto.getTenant(), projectDto.getTenantId());
+            projectDto.getCode(), projectDto.getTenant(), projectDto.getTenantId());
+        log.debug("[ProjectController] Payload ProjectDto: {}", projectDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(projectService.create(projectDto));
     }
 
