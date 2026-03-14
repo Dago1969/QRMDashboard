@@ -32,9 +32,11 @@ public class UserTenantProjectRelationMapper {
     }
 
     public UserTenantProjectRelation toEntity(UserTenantProjectRelationDto dto) {
-        UserTenantProjectRelation entity = modelMapper.map(dto, UserTenantProjectRelation.class);
+        UserTenantProjectRelation entity = new UserTenantProjectRelation();
+        // Mappo solo i campi semplici, i riferimenti a user, tenant, project saranno settati dal Service
         entity.setEmail(dto.getEmail());
-        // Attenzione: i riferimenti a User, Tenant, Project vanno risolti dal Service
+        // Gli id e i riferimenti a user, tenant, project vanno gestiti dal Service
+        // Lascio user, tenant, project a null: saranno settati dal Service prima del salvataggio
         return entity;
     }
 }

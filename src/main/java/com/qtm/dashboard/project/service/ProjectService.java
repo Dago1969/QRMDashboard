@@ -55,7 +55,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectDto> findAll(String code, String tenant) {
-        log.info("[Service] Ricerca progetti: code={}, tenant={}", code, tenant);
+            log.info("[Service] Ricerca progetti: code={}, tenant={}", code, tenant);
         String normalizedCode = normalizeFilter(code);
         String normalizedTenant = normalizeFilter(tenant);
         List<ProjectEntity> all = projectRepository.findAll();

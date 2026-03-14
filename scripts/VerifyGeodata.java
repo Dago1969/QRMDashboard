@@ -3,7 +3,11 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class VerifyGeodata {
+    private static final Logger log = LoggerFactory.getLogger(VerifyGeodata.class);
     public static void main(String[] args) throws Exception {
         String jdbcUrl = "jdbc:mysql://localhost:3306/QTMDashboard?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
         try (Connection connection = DriverManager.getConnection(jdbcUrl, "root", "dago");
@@ -15,10 +19,10 @@ public class VerifyGeodata {
                              + "(select count(*) from province) as provinces, "
                              + "(select count(*) from city) as cities")) {
             if (result.next()) {
-                System.out.println("countries=" + result.getInt("countries"));
-                System.out.println("regions=" + result.getInt("regions"));
-                System.out.println("provinces=" + result.getInt("provinces"));
-                System.out.println("cities=" + result.getInt("cities"));
+                log.info("countries={}", result.getInt("countries"));
+                log.info("regions={}", result.getInt("regions"));
+                log.info("provinces={}", result.getInt("provinces"));
+                log.info("cities={}", result.getInt("cities"));
             }
         }
     }
