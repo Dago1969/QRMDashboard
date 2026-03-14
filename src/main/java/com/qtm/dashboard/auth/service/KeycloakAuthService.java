@@ -3,6 +3,9 @@ package com.qtm.dashboard.auth.service;
 import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.dto.LoginResponse;
 import com.qtm.dashboard.config.KeycloakProperties;
+import com.qtm.dashboard.user.entity.UserEntity;
+import com.qtm.dashboard.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -11,8 +14,13 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
@@ -21,17 +29,72 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
  * Service dedicato all'accesso verso endpoint OIDC token di Keycloak.
  */
 @Service
+@Slf4j
 public class KeycloakAuthService {
 
     private final RestClient restClient;
     private final KeycloakProperties keycloakProperties;
+    private final UserRepository userRepository;
 
-    public KeycloakAuthService(KeycloakProperties keycloakProperties) {
+    public KeycloakAuthService(KeycloakProperties keycloakProperties,
+                               UserRepository userRepository) {
         this.restClient = RestClient.builder().build();
         this.keycloakProperties = keycloakProperties;
+        this.userRepository = userRepository;
     }
 
     public LoginResponse login(LoginRequest loginRequest) {
+        List<String> loginIdentifiers = resolveLoginIdentifiers(loginRequest.getUsername());
+        log.info("[KeycloakAuthService] Tentativo login per identificativo={}, candidati={}",
+                loginRequest.getUsername(), loginIdentifiers);
+        ResponseStatusException lastFailure = null;
+
+        for (String loginIdentifier : loginIdentifiers) {
+            try {
+                LoginResponse response = loginWithIdentifier(loginIdentifier, loginRequest.getPassword());
+                log.info("[KeycloakAuthService] Login Keycloak riuscito con identificativo={}", loginIdentifier);
+                return response;
+            } catch (ResponseStatusException ex) {
+                log.warn("[KeycloakAuthService] Login Keycloak fallito con identificativo={}", loginIdentifier);
+                lastFailure = ex;
+            }
+        }
+
+        if (lastFailure != null) {
+            throw lastFailure;
+        }
+
+        throw new ResponseStatusException(UNAUTHORIZED, "Credenziali non valide");
+    }
+
+    List<String> resolveLoginIdentifiers(String rawLoginIdentifier) {
+        String normalizedIdentifier = normalizeLoginIdentifier(rawLoginIdentifier);
+        Set<String> candidates = new LinkedHashSet<>();
+        candidates.add(normalizedIdentifier);
+
+        resolveCanonicalUsername(userRepository.findByUsernameIgnoreCase(normalizedIdentifier))
+                .ifPresent(candidates::add);
+        resolveCanonicalUsername(userRepository.findByEmailIgnoreCase(normalizedIdentifier))
+                .ifPresent(candidates::add);
+
+        return new ArrayList<>(candidates);
+    }
+
+    private Optional<String> resolveCanonicalUsername(Optional<UserEntity> userEntity) {
+        return userEntity
+                .map(UserEntity::getUsername)
+                .map(this::normalizeLoginIdentifier);
+    }
+
+    private String normalizeLoginIdentifier(String loginIdentifier) {
+        String normalizedIdentifier = Objects.requireNonNull(loginIdentifier, "Username obbligatorio").trim();
+        if (normalizedIdentifier.isEmpty()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Username obbligatorio");
+        }
+        return normalizedIdentifier;
+    }
+
+    private LoginResponse loginWithIdentifier(String loginIdentifier, String password) {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("client_id", keycloakProperties.getClientId());
         formData.add("grant_type", keycloakProperties.getGrantType());
@@ -40,8 +103,8 @@ public class KeycloakAuthService {
         }
         // Solo per grant_type password aggiungi username/password
         if ("password".equalsIgnoreCase(keycloakProperties.getGrantType())) {
-            formData.add("username", loginRequest.getUsername());
-            formData.add("password", loginRequest.getPassword());
+            formData.add("username", loginIdentifier);
+            formData.add("password", password);
         }
 
         try {

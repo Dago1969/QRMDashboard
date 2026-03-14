@@ -1,6 +1,8 @@
 package com.qtm.dashboard.user.service;
 
 import com.qtm.commonlib.dto.UserDto;
+import com.qtm.dashboard.auth.dto.LoginRequest;
+import com.qtm.dashboard.auth.service.KeycloakAuthService;
 import com.qtm.dashboard.config.KeycloakProperties;
 import com.qtm.dashboard.user.entity.RoleEntity;
 import com.qtm.dashboard.user.entity.UserEntity;
@@ -36,6 +38,7 @@ import java.util.stream.Stream;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 /**
  * Service dedicato al provisioning utente su Keycloak e sul DB locale.
@@ -51,12 +54,20 @@ public class UserProvisioningService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final KeycloakProperties keycloakProperties;
+    private final KeycloakAuthService keycloakAuthService;
 
     @Transactional
     public UserDto provisionUser(UserDto userDto) {
         String normalizedUsername = normalizeRequired(userDto.getUsername(), "Username obbligatorio");
         String requestedClientId = resolveRequestedClientId(userDto);
         String generatedPassword = generatePassword();
+
+        log.info("[UserProvisioningService] Avvio provisioning Keycloak: username={}, email={}, enabled={}, roleId={}, requestedClientId={}",
+            normalizedUsername,
+            userDto.getEmail(),
+            userDto.isEnabled(),
+            userDto.getRoleId(),
+            requestedClientId);
 
         Optional<UserEntity> existingDbUser = userRepository.findByUsernameIgnoreCase(normalizedUsername);
 
@@ -65,6 +76,11 @@ public class UserProvisioningService {
             RealmResource realmResource = keycloak.realm(requiredRealm());
             ClientRepresentation requestedClient = resolveClient(realmResource, requestedClientId);
             List<String> requestedClientRoleNames = resolveRequestedClientRoleNames(userDto.getRoleId());
+
+            log.info("[UserProvisioningService] Client Keycloak risolto: requestedClientId={}, resolvedClientUuid={}, requestedRoleNames={}",
+                requestedClient != null ? requestedClient.getClientId() : null,
+                requestedClient != null ? requestedClient.getId() : null,
+                requestedClientRoleNames);
 
             UserResource keycloakUserResource = upsertKeycloakUser(
                     realmResource,
@@ -75,8 +91,9 @@ public class UserProvisioningService {
 
             log.info("[UserProvisioningService] Password generata per username={}: {}", normalizedUsername, generatedPassword);
             applyPasswordWithoutRequiredChange(keycloakUserResource, generatedPassword);
+                verifyKeycloakLogin(normalizedUsername, generatedPassword);
 
-                    UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
+                UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
 
             UserDto result = userMapper.toDto(persistedEntity);
             result.setClientId(requestedClientId);
@@ -165,8 +182,12 @@ public class UserProvisioningService {
                                       String normalizedUsername,
                                       String requestedClientId) {
         UserRepresentation representation = new UserRepresentation();
+        String normalizedEmail = normalizeNullable(userDto.getEmail());
         representation.setUsername(normalizedUsername);
-        representation.setEmail(normalizeNullable(userDto.getEmail()));
+        representation.setEmail(normalizedEmail);
+        representation.setEmailVerified(normalizedEmail != null);
+        representation.setFirstName(resolveKeycloakFirstName(normalizedUsername, normalizedEmail));
+        representation.setLastName(resolveKeycloakLastName(normalizedUsername, normalizedEmail));
         representation.setEnabled(Boolean.TRUE.equals(userDto.isEnabled()) || userDto.isEnabled());
         representation.setRequiredActions(new ArrayList<>());
         representation.setAttributes(buildAssociationAttributes(requestedClientId));
@@ -218,6 +239,24 @@ public class UserProvisioningService {
             changed = true;
         }
 
+        String expectedFirstName = resolveKeycloakFirstName(normalizedUsername, normalizedEmail);
+        if (!expectedFirstName.equals(Objects.toString(representation.getFirstName(), ""))) {
+            representation.setFirstName(expectedFirstName);
+            changed = true;
+        }
+
+        String expectedLastName = resolveKeycloakLastName(normalizedUsername, normalizedEmail);
+        if (!expectedLastName.equals(Objects.toString(representation.getLastName(), ""))) {
+            representation.setLastName(expectedLastName);
+            changed = true;
+        }
+
+        boolean expectedEmailVerified = normalizedEmail != null;
+        if (representation.isEmailVerified() == null || representation.isEmailVerified() != expectedEmailVerified) {
+            representation.setEmailVerified(expectedEmailVerified);
+            changed = true;
+        }
+
         if (representation.isEnabled() == null || representation.isEnabled() != userDto.isEnabled()) {
             representation.setEnabled(userDto.isEnabled());
             changed = true;
@@ -264,6 +303,15 @@ public class UserProvisioningService {
         List<RoleRepresentation> availableRoles = Optional.ofNullable(
                 userResource.roles().clientLevel(requestedClient.getId()).listAvailable())
             .orElse(List.of());
+
+        log.info("[UserProvisioningService] Verifica ruoli client per username={}, clientId={}, clientUuid={}, requestedClientRoleNames={}, currentClientRoles={}, availableClientRoles={}",
+            userResource.toRepresentation().getUsername(),
+            requestedClient.getClientId(),
+            requestedClient.getId(),
+            requestedClientRoleNames,
+            currentClientRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList(),
+            availableRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
+
         List<RoleRepresentation> rolesToAssign = resolveClientRolesToAssign(
                 requestedClient,
                 currentClientRoles,
@@ -291,9 +339,29 @@ public class UserProvisioningService {
                 .map(this::normalizeRoleName)
                 .filter(Objects::nonNull)
                 .toList();
+
+            log.info("[UserProvisioningService] Risoluzione ruoli per client {}: normalizedRequestedRoleNames={}, currentRoleNames={}, availableRoleNames={}",
+                requestedClient != null ? requestedClient.getClientId() : null,
+                normalizedRequestedRoleNames,
+                Optional.ofNullable(currentClientRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList(),
+                Optional.ofNullable(availableRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
+
         if (!normalizedRequestedRoleNames.isEmpty()) {
             List<RoleRepresentation> explicitRoles = findMatchingRoles(availableRoles, normalizedRequestedRoleNames);
             if (explicitRoles.isEmpty()) {
+                List<RoleRepresentation> alreadyAssignedExplicitRoles = findMatchingRoles(currentClientRoles, normalizedRequestedRoleNames);
+                if (!alreadyAssignedExplicitRoles.isEmpty()) {
+                    log.info("[UserProvisioningService] I ruoli client richiesti sono gia' assegnati al client {}: {}",
+                            requestedClient.getClientId(),
+                            alreadyAssignedExplicitRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
+                    return List.of();
+                }
+
+                log.error("[UserProvisioningService] Nessun ruolo client esplicito trovato: clientId={}, requestedRoleNamesOriginal={}, requestedRoleNamesNormalized={}, availableRoleNames={}",
+                    requestedClient.getClientId(),
+                    requestedClientRoleNames,
+                    normalizedRequestedRoleNames,
+                    Optional.ofNullable(availableRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
                 throw new ResponseStatusException(
                         BAD_REQUEST,
                         "Ruolo client Keycloak non trovato per client " + requestedClient.getClientId()
@@ -350,6 +418,13 @@ public class UserProvisioningService {
                 .map(this::normalizeRoleName)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        log.info("[UserProvisioningService] Role DB risolto: roleId={}, roleName={}, roleDescription={}, candidateClientRoleNames={}",
+                requestedRole.getId(),
+                requestedRole.getName(),
+                requestedRole.getDescription(),
+                candidateRoleNames);
+
         return List.copyOf(candidateRoleNames);
     }
 
@@ -399,7 +474,7 @@ public class UserProvisioningService {
             return null;
         }
 
-        return roleName.trim().toLowerCase(Locale.ROOT);
+        return roleName.trim();
     }
 
     private void applyPasswordWithoutRequiredChange(UserResource userResource, String generatedPassword) {
@@ -409,11 +484,119 @@ public class UserProvisioningService {
         credentialRepresentation.setTemporary(false);
         userResource.resetPassword(credentialRepresentation);
 
+        sanitizeUserForDirectGrant(userResource);
+    }
+
+    /**
+     * Rimuove gli stati che impediscono il direct grant, come required actions residue ed email non verificata.
+     */
+    private void sanitizeUserForDirectGrant(UserResource userResource) {
         UserRepresentation representation = userResource.toRepresentation();
+        boolean changed = false;
+
         List<String> requiredActions = new ArrayList<>(Optional.ofNullable(representation.getRequiredActions()).orElse(List.of()));
-        if (requiredActions.removeIf(action -> "UPDATE_PASSWORD".equalsIgnoreCase(action))) {
+        if (!requiredActions.isEmpty()) {
+            log.warn("[UserProvisioningService] Required actions residue per username={}: {}. Le rimuovo per consentire il direct grant.",
+                    representation.getUsername(), requiredActions);
+            requiredActions.clear();
             representation.setRequiredActions(requiredActions);
+            changed = true;
+        }
+
+        boolean shouldVerifyEmail = normalizeNullable(representation.getEmail()) != null;
+        if (shouldVerifyEmail && !Boolean.TRUE.equals(representation.isEmailVerified())) {
+            representation.setEmailVerified(true);
+            changed = true;
+        }
+
+        String sanitizedUsername = normalizeNullable(representation.getUsername());
+        String sanitizedEmail = normalizeNullable(representation.getEmail());
+        String expectedFirstName = resolveKeycloakFirstName(sanitizedUsername, sanitizedEmail);
+        if (!expectedFirstName.equals(Objects.toString(representation.getFirstName(), ""))) {
+            representation.setFirstName(expectedFirstName);
+            changed = true;
+        }
+
+        String expectedLastName = resolveKeycloakLastName(sanitizedUsername, sanitizedEmail);
+        if (!expectedLastName.equals(Objects.toString(representation.getLastName(), ""))) {
+            representation.setLastName(expectedLastName);
+            changed = true;
+        }
+
+        if (changed) {
             userResource.update(representation);
+        }
+    }
+
+    String resolveKeycloakFirstName(String username, String email) {
+        List<String> profileTokens = extractProfileTokens(username, email);
+        if (!profileTokens.isEmpty()) {
+            return profileTokens.get(0);
+        }
+
+        return "Utente";
+    }
+
+    String resolveKeycloakLastName(String username, String email) {
+        List<String> profileTokens = extractProfileTokens(username, email);
+        if (profileTokens.size() > 1) {
+            return profileTokens.get(profileTokens.size() - 1);
+        }
+        if (profileTokens.size() == 1) {
+            return "Qtm";
+        }
+
+        return "Qtm";
+    }
+
+    private List<String> extractProfileTokens(String username, String email) {
+        String baseValue = normalizeNullable(email);
+        if (baseValue != null && baseValue.contains("@")) {
+            baseValue = baseValue.substring(0, baseValue.indexOf('@'));
+        }
+        if (baseValue == null) {
+            baseValue = normalizeNullable(username);
+        }
+        if (baseValue == null) {
+            return List.of();
+        }
+
+        return Stream.of(baseValue.split("[^\\p{L}]+"))
+                .map(this::normalizeNullable)
+                .filter(Objects::nonNull)
+                .map(this::capitalizeProfileToken)
+                .distinct()
+                .toList();
+    }
+
+    private String capitalizeProfileToken(String token) {
+        String lowerCaseToken = token.toLowerCase(Locale.ROOT);
+        if (lowerCaseToken.isEmpty()) {
+            return lowerCaseToken;
+        }
+
+        return lowerCaseToken.substring(0, 1).toUpperCase(Locale.ROOT) + lowerCaseToken.substring(1);
+    }
+
+    /**
+     * Verifica immediatamente che le credenziali appena assegnate siano accettate dal token endpoint Keycloak.
+     */
+    void verifyKeycloakLogin(String username, String password) {
+        log.info("[UserProvisioningService] Verifica accesso Keycloak con username={} e password={}", username, password);
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername(username);
+        loginRequest.setPassword(password);
+
+        try {
+            keycloakAuthService.login(loginRequest);
+            log.info("[UserProvisioningService] Verifica accesso Keycloak riuscita per username={} e password={}", username, password);
+        } catch (ResponseStatusException ex) {
+            log.error("[UserProvisioningService] Verifica accesso Keycloak fallita per username={} e password={}", username, password, ex);
+            throw new ResponseStatusException(
+                    UNAUTHORIZED,
+                    "Accesso fallito: verifica le credenziali Keycloak.",
+                    ex);
         }
     }
 

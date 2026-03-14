@@ -27,8 +27,8 @@ export class LoginComponent implements OnInit {
     private readonly i18nPropertiesService: I18nPropertiesService
   ) {
     this.loginForm = this.formBuilder.nonNullable.group({
-      username: ['francesco.tripodi', [Validators.required]],
-      password: ['QTM!2026', [Validators.required]]
+      username: ['', [Validators.required]],
+      password: ['', [Validators.required]]
     });
   }
 
@@ -51,9 +51,16 @@ export class LoginComponent implements OnInit {
     }
 
     const { username, password } = this.loginForm.getRawValue();
+    const normalizedUsername = username.trim();
+
+    if (!normalizedUsername) {
+      this.errorMessage = this.t('login.error.requiredCredentials');
+      return;
+    }
+
     this.errorMessage = '';
 
-    this.authService.login(username, password).subscribe({
+    this.authService.login(normalizedUsername, password).subscribe({
       next: () => {
         this.router.navigate(['/dashboard']);
       },
