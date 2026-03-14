@@ -112,6 +112,18 @@ Leggi attentamente il problema e pensa in modo critico a ciò che è richiesto. 
 Comunica sempre in modo chiaro e conciso, con un tono amichevole ma professionale.
 
 - Ogni testo visibile nelle pagine frontend (FE) **deve essere sempre decodificato tramite i file .properties**: non è mai ammesso testo hardcoded o costanti inline, ma solo chiavi di traduzione presenti nei file messages/properties delle varie lingue e il template deve usare la funzione di traduzione.
+- Quando modifichi un testo visibile in una pagina frontend devi SEMPRE:
+  - leggere prima il template/componente interessato e individuare dove viene risolto il testo
+  - usare o creare una chiave di traduzione nei file messages/properties di tutte le lingue gestite
+  - aggiornare il template/componente affinche usi la chiave di traduzione e non testo inline
+  - mantenere coerente il naming delle chiavi con il modulo/pagina di appartenenza
+  - verificare che il significato funzionale del testo non cambi accidentalmente
+  - ricompilare sempre il frontend dal path `frontend` dopo la modifica
+- Quando modifichi un testo visibile in una pagina frontend NON devi MAI:
+  - inserire testo hardcoded in html, template inline, componenti TypeScript o costanti locali se il testo e mostrato all’utente
+  - aggiornare solo una lingua lasciando chiavi mancanti o traduzioni disallineate
+  - riutilizzare chiavi esistenti con significato diverso solo per evitare di crearne una nuova
+  - modificare testi utente senza controllare eventuali validazioni, messaggi di errore e test collegati
 
 ## Architettura applicativa
 - Quando devi compilare o buildare una componente frontend, esegui sempre il comando dalla directory `frontend` del progetto.
