@@ -27,8 +27,8 @@ export class LoginComponent implements OnInit {
     private readonly i18nPropertiesService: I18nPropertiesService
   ) {
     this.loginForm = this.formBuilder.nonNullable.group({
-      username: ['', [Validators.required]],
-      password: ['', [Validators.required]]
+      username: ['francesco.tripodi', [Validators.required]],
+      password: ['QTM!2026', [Validators.required]]
     });
   }
 
