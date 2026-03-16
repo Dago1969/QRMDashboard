@@ -1,9 +1,9 @@
 package com.qtm.dashboard.tenant.controller;
 
-import com.qtm.dashboard.tenant.dto.TenantAppPointerDto;
+import com.qtm.commonlib.dto.TenantDto;
 import com.qtm.dashboard.tenant.dto.TenantAppPointerUpsertRequestDto;
 import com.qtm.dashboard.tenant.dto.TenantResolutionDto;
-import com.qtm.dashboard.tenant.service.TenantAppPointerService;
+import com.qtm.dashboard.tenant.service.TenantService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,10 +31,10 @@ import java.util.List;
 @Slf4j
 public class TenantAppPointerController {
 
-    private final TenantAppPointerService tenantAppPointerService;
+    private final TenantService tenantAppPointerService;
 
     @GetMapping
-    public ResponseEntity<List<TenantAppPointerDto>> listAll() {
+    public ResponseEntity<List<TenantDto>> listAll() {
         return ResponseEntity.ok(tenantAppPointerService.listAll());
     }
 
@@ -42,7 +42,7 @@ public class TenantAppPointerController {
      * Ricerca puntamento per clientCode. Restituisce 200 con il DTO se presente, 404 se assente.
      */
     @GetMapping("/by-client/{clientCode}")
-    public ResponseEntity<TenantAppPointerDto> getByClientCode(@PathVariable String clientCode) {
+    public ResponseEntity<TenantDto> getByClientCode(@PathVariable String clientCode) {
         log.info("[TenantAppPointerController] Received lookup request for clientCode={}", clientCode);
         return tenantAppPointerService.findByClientCode(clientCode)
                 .map(pointer -> {
@@ -64,17 +64,17 @@ public class TenantAppPointerController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TenantAppPointerDto> getById(@PathVariable Long id) {
+    public ResponseEntity<TenantDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(tenantAppPointerService.getById(id));
     }
 
     @PostMapping
-    public ResponseEntity<TenantAppPointerDto> create(@Valid @RequestBody TenantAppPointerUpsertRequestDto request) {
+    public ResponseEntity<TenantDto> create(@Valid @RequestBody TenantAppPointerUpsertRequestDto request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(tenantAppPointerService.create(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TenantAppPointerDto> update(@PathVariable Long id,
+    public ResponseEntity<TenantDto> update(@PathVariable Long id,
                                                       @Valid @RequestBody TenantAppPointerUpsertRequestDto request) {
         return ResponseEntity.ok(tenantAppPointerService.update(id, request));
     }

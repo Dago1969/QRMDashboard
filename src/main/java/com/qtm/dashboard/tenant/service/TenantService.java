@@ -1,5 +1,17 @@
-   
-package com.qtm.dashboard.tenant.service;
+ package com.qtm.dashboard.tenant.service;
+
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.qtm.commonlib.dto.TenantDto;
 import com.qtm.dashboard.tenant.dto.TenantAppPointerUpsertRequestDto;
@@ -7,20 +19,9 @@ import com.qtm.dashboard.tenant.dto.TenantResolutionDto;
 import com.qtm.dashboard.tenant.entity.TenantAppPointerEntity;
 import com.qtm.dashboard.tenant.mapper.TenantMapper;
 import com.qtm.dashboard.tenant.repository.TenantAppPointerRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Map;
-import java.util.Optional;
-import java.util.List;
-
-import static org.springframework.http.HttpStatus.CONFLICT;
-import static org.springframework.http.HttpStatus.FORBIDDEN;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
  * Service di orchestrazione CRUD e risoluzione veloce per puntamenti tenant app.
@@ -28,7 +29,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class TenantAppPointerService {
+public class TenantService {
 
     private final TenantAppPointerRepository tenantAppPointerRepository;
     private final TenantMapper tenantAppPointerMapper;

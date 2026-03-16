@@ -18,6 +18,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @IdClass(UserTenantProjectRelationId.class)
 public class UserTenantProjectRelation {
+	
+	
     @Id
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
