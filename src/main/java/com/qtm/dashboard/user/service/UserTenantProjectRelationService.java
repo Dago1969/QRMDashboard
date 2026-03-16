@@ -14,9 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
  * Service per la gestione della relazione User-Tenant-Project.
@@ -64,6 +68,14 @@ public class UserTenantProjectRelationService {
             .collect(Collectors.toList());
     }
 
+    public List<UserTenantProjectRelationDto> findByUserIdAndTenantId(Long userId, Long tenantId) {
+        log.info("[Service] findByUserIdAndTenantId chiamato con userId={} tenantId={}", userId, tenantId);
+        return repository.findByUserIdAndTenantIdWithFetch(userId, tenantId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
     public UserTenantProjectRelationDto save(UserTenantProjectRelationDto dto) {
         log.info("[Service] save chiamato con dto={}", dto);
         UserTenantProjectRelation entity = mapper.toEntity(dto);
@@ -92,5 +104,16 @@ public class UserTenantProjectRelationService {
             (saved.getUser() != null ? saved.getUser().getId() : null),
             (saved.getProject() != null ? saved.getProject().getId() : null));
         return mapper.toDto(saved);
+    }
+
+    @Transactional
+    public void delete(Long userId, Long tenantId, Long projectId) {
+        log.info("[Service] delete chiamato con userId={} tenantId={} projectId={}", userId, tenantId, projectId);
+        UserTenantProjectRelation relation = repository.findByUserIdAndTenantIdAndProjectIdWithFetch(userId, tenantId, projectId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        NOT_FOUND,
+                        "Relazione user-tenant-project non trovata"
+                ));
+        repository.delete(relation);
     }
 }
