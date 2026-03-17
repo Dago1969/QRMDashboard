@@ -78,11 +78,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
           const realmRoles = (customRealmRoles ?? []).slice().sort();
           const clientProjects = projectsByClient.get(client) ?? [];
 
+          // Se non ci sono progetti specifici, NON mostrare box progetto e passa null
           if (clientProjects.length === 0) {
             return [{
               client,
               resourceRoles,
-              realmRoles
+              realmRoles,
+              projectCode: null,
+              projectDescription: null
             }];
           }
 
@@ -133,7 +136,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
             targetUrl.searchParams.set('token', token);
             targetUrl.searchParams.set('client', client);
             targetUrl.searchParams.set('role', role);
-            if (project) {
+            // Passa project solo se valorizzato
+            if (project !== undefined && project !== null && project !== '') {
               targetUrl.searchParams.set('project', project);
             }
             window.location.href = targetUrl.toString();
