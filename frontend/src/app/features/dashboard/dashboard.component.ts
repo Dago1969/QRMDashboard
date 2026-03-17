@@ -4,8 +4,16 @@ import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
-import { AuthService } from '../../core/auth.service';
+import { AuthService, DashboardResponse, DashboardUserProject } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
+
+interface DashboardRoleGroup {
+  client: string;
+  resourceRoles: string[];
+  realmRoles: string[];
+  projectCode?: string;
+  projectDescription?: string;
+}
 
 /**
  * Dashboard protetta che mostra dati utente ottenuti da endpoint backend autenticato.
@@ -17,12 +25,12 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   message = '';
   username = '';
   subject = '';
-  // Raggruppamento per la view: [{ client, resourceRoles: string[], realmRoles: string[], project: string }]
-  groupedClientRoles: Array<{ client: string; resourceRoles: string[]; realmRoles: string[]; project: string }> = [];
+  groupedClientRoles: DashboardRoleGroup[] = [];
+  userProjects: DashboardUserProject[] = [];
   decodedClaimsPretty = '';
   errorMessage = '';
   isMessageFading = false;
@@ -48,12 +56,12 @@ export class DashboardComponent implements OnInit {
     });
 
     this.authService.getDashboardData().subscribe({
-      next: (response) => {
+      next: (response: DashboardResponse) => {
         this.showSuccessMessage(response.message);
         this.username = response.username;
         this.subject = response.subject;
+        this.userProjects = Array.isArray(response.userProjects) ? response.userProjects : [];
 
-        // Raggruppa i box per client
         const resourceClients = Object.keys(response.clientRoles ?? {}).filter(client => client.toLowerCase() !== 'account').sort();
         const claims = response.decodedClaims ?? {};
         const realmAccess = (claims['realm_access'] as any)?.roles as string[] | undefined;
@@ -64,20 +72,27 @@ export class DashboardComponent implements OnInit {
         ];
         const customRealmRoles = (realmAccess ?? []).filter(r => !standardRoles.includes(r));
 
-        // Prepara la struttura raggruppata per la view
-        this.groupedClientRoles = resourceClients.map(client => {
-          // Resource roles ordinati
+        const projectsByClient = this.groupProjectsByClient(this.userProjects);
+        this.groupedClientRoles = resourceClients.flatMap((client) => {
           const resourceRoles = (response.clientRoles?.[client] ?? []).slice().sort();
-          // Realm roles ordinati
           const realmRoles = (customRealmRoles ?? []).slice().sort();
-          // project dinamico: qui lo valorizzo con il nome del client, ma puoi personalizzare la logica
-          const project = client;
-          return {
+          const clientProjects = projectsByClient.get(client) ?? [];
+
+          if (clientProjects.length === 0) {
+            return [{
+              client,
+              resourceRoles,
+              realmRoles
+            }];
+          }
+
+          return clientProjects.map((project) => ({
             client,
             resourceRoles,
             realmRoles,
-            project
-          };
+            projectCode: project.projectCode,
+            projectDescription: project.projectDescription
+          }));
         });
 
         this.decodedClaimsPretty = JSON.stringify(response.decodedClaims ?? {}, null, 2);
@@ -102,7 +117,7 @@ export class DashboardComponent implements OnInit {
     return this.translations[key] ?? key;
   }
 
-  openTenantsDashboard(client: string, role: string, project: string): void {
+  openTenantsDashboard(client: string, role: string, project?: string): void {
     const token = this.authService.getToken();
 
     if (!token) {
@@ -118,7 +133,9 @@ export class DashboardComponent implements OnInit {
             targetUrl.searchParams.set('token', token);
             targetUrl.searchParams.set('client', client);
             targetUrl.searchParams.set('role', role);
-            targetUrl.searchParams.set('project', project);
+            if (project) {
+              targetUrl.searchParams.set('project', project);
+            }
             window.location.href = targetUrl.toString();
           },
           error: (error: HttpErrorResponse) => {
@@ -258,6 +275,25 @@ export class DashboardComponent implements OnInit {
     }
 
     return targetUrl;
+  }
+
+  private groupProjectsByClient(userProjects: DashboardUserProject[]): Map<string, DashboardUserProject[]> {
+    return userProjects
+      .filter((project) => Boolean(project.tenantCode && project.projectCode))
+      .reduce((projectsByClient, project) => {
+        const clientCode = project.tenantCode as string;
+        const currentProjects = projectsByClient.get(clientCode) ?? [];
+        const alreadyAdded = currentProjects.some((currentProject) =>
+          currentProject.projectId === project.projectId
+          || currentProject.projectCode === project.projectCode
+        );
+
+        if (!alreadyAdded) {
+          projectsByClient.set(clientCode, [...currentProjects, project]);
+        }
+
+        return projectsByClient;
+      }, new Map<string, DashboardUserProject[]>());
   }
 
   /**

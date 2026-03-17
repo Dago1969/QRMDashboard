@@ -1,5 +1,8 @@
 package com.qtm.dashboard.user.controller;
 
+import org.springframework.web.server.ResponseStatusException;
+
+
 import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.user.service.UserService;
 import org.slf4j.Logger;
@@ -33,9 +36,11 @@ public class UserController {
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
+    private final com.qtm.dashboard.user.service.UserTenantProjectRelationService userTenantProjectRelationService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, com.qtm.dashboard.user.service.UserTenantProjectRelationService userTenantProjectRelationService) {
         this.userService = userService;
+        this.userTenantProjectRelationService = userTenantProjectRelationService;
     }
 
     @PostMapping
@@ -114,6 +119,23 @@ public class UserController {
         response.put("subject", sub);
         response.put("clientRoles", clientRoles);
         response.put("decodedClaims", extractDecodedClaims(jwt));
+
+        // Risolvi userId dal preferred_username
+        Long userId = null;
+        if (preferredUsername != null && !preferredUsername.isBlank()) {
+            try {
+                userId = userService.findEntityByUsername(preferredUsername).getId();
+            } catch (ResponseStatusException ex) {
+                log.warn("[QTMDashboard] Utente non trovato per preferred_username: {}", preferredUsername);
+            }
+        }
+        if (userId != null) {
+            var projects = userTenantProjectRelationService.findByUserId(userId);
+            response.put("userProjects", projects);
+            log.info("[QTMDashboard] Risposta dashboard userProjects: {}", projects);
+        } else {
+            response.put("userProjects", List.of());
+        }
         return ResponseEntity.ok(response);
     }
 

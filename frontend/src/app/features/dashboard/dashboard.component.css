@@ -1,3 +1,7 @@
+.project-name-red {
+  color: #b00020;
+  font-weight: bold;
+}
 @keyframes feedbackFadeOut {
   from {
     opacity: 1;
@@ -68,6 +72,12 @@
   margin-bottom: 8px;
   color: #2a2a2a;
 }
+
+.client-group-subtitle {
+  margin: 0 0 8px 0;
+  color: #475569;
+}
+
 /*
   Stili dashboard.
  */
