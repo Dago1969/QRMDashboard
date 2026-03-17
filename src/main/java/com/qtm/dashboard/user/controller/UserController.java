@@ -130,7 +130,7 @@ public class UserController {
             }
         }
         if (userId != null) {
-            var projects = userTenantProjectRelationService.findByUserId(userId);
+            var projects = userTenantProjectRelationService.findDashboardProjectsByUserId(userId);
             response.put("userProjects", projects);
             log.info("[QTMDashboard] Risposta dashboard userProjects: {}", projects);
         } else {

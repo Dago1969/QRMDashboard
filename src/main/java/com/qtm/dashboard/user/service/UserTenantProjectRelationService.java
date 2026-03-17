@@ -17,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -47,6 +50,31 @@ public class UserTenantProjectRelationService {
         return list.stream()
             .map(mapper::toDto)
             .collect(Collectors.toList());
+    }
+
+    /**
+     * Restituisce le relazioni progetto per la dashboard.
+     * Se per uno specifico client non esistono righe, oppure l'utente copre tutti i progetti del client,
+     * il frontend deve mostrare un box generale e non uno per progetto.
+     */
+    public List<UserTenantProjectRelationDto> findDashboardProjectsByUserId(Long userId) {
+        List<UserTenantProjectRelationDto> relations = findByUserId(userId);
+
+        if (relations.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<UserTenantProjectRelationDto>> relationsByTenant = relations.stream()
+            .filter(relation -> relation.getTenantId() != null)
+            .collect(Collectors.groupingBy(
+                UserTenantProjectRelationDto::getTenantId,
+                LinkedHashMap::new,
+                Collectors.toList()
+            ));
+
+        return relationsByTenant.values().stream()
+            .flatMap(tenantRelations -> collapseTenantProjectsForDashboard(tenantRelations).stream())
+            .toList();
     }
 
     public List<UserTenantProjectRelationDto> findByTenantId(Long tenantId, boolean onlySuperuser) {
@@ -115,5 +143,41 @@ public class UserTenantProjectRelationService {
                         "Relazione user-tenant-project non trovata"
                 ));
         repository.delete(relation);
+    }
+
+    private List<UserTenantProjectRelationDto> collapseTenantProjectsForDashboard(List<UserTenantProjectRelationDto> tenantRelations) {
+        Set<Long> assignedProjectIds = tenantRelations.stream()
+            .map(UserTenantProjectRelationDto::getProjectId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        if (assignedProjectIds.isEmpty()) {
+            return tenantRelations;
+        }
+
+        UserTenantProjectRelationDto firstRelation = tenantRelations.get(0);
+        Long tenantId = firstRelation.getTenantId();
+        Set<Long> availableProjectIds = projectRepository.findByTenant_Id(tenantId).stream()
+            .map(ProjectEntity::getId)
+            .collect(Collectors.toSet());
+
+        if (!availableProjectIds.isEmpty() && availableProjectIds.equals(assignedProjectIds)) {
+            log.info("[Service] Dashboard tenantId={} consolidato su box generale perche l'utente copre tutti i progetti", tenantId);
+            return List.of(buildTenantLevelRelation(firstRelation));
+        }
+
+        return tenantRelations;
+    }
+
+    private UserTenantProjectRelationDto buildTenantLevelRelation(UserTenantProjectRelationDto source) {
+        return UserTenantProjectRelationDto.builder()
+            .userId(source.getUserId())
+            .username(source.getUsername())
+            .tenantId(source.getTenantId())
+            .tenantCode(source.getTenantCode())
+            .tenantName(source.getTenantName())
+            .superuser(source.isSuperuser())
+            .email(source.getEmail())
+            .build();
     }
 }
