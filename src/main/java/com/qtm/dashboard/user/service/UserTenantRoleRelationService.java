@@ -14,48 +14,68 @@ import java.util.List;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+import com.qtm.dashboard.user.entity.UserTenantRoleRelation;
+
 /**
  * Service di compatibilita per le API user-tenant-role basato sul ruolo singolo attualmente associato all'utente.
  */
+
 @Service
 @RequiredArgsConstructor
 public class UserTenantRoleRelationService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final com.qtm.dashboard.user.repository.UserTenantRoleRelationRepository userTenantRoleRelationRepository;
+
 
     @Transactional(readOnly = true)
     public List<UserTenantRoleRelationDto> findByUserAndTenant(Long userId, Long tenantId) {
-        UserEntity user = findUser(userId);
-        if (user.getRole() == null) {
-            return List.of();
-        }
-
-        return List.of(toDto(user, tenantId));
+        List<UserTenantRoleRelation> relations = userTenantRoleRelationRepository.findByUserIdAndTenantId(userId, tenantId);
+        return relations.stream().map(this::toDto).toList();
     }
+
 
     @Transactional
     public UserTenantRoleRelationDto save(UserTenantRoleRelationDto dto) {
-        UserEntity user = findUser(dto.getUserId());
-        RoleEntity role = findRole(dto.getRoleId());
-        user.setRole(role);
-        UserEntity saved = userRepository.save(user);
-        return toDto(saved, dto.getTenantId());
+        // Verifica esistenza user e ruolo
+        findUser(dto.getUserId());
+        findRole(dto.getRoleId());
+        UserTenantRoleRelation rel = new UserTenantRoleRelation();
+        rel.setUserId(dto.getUserId());
+        rel.setTenantId(dto.getTenantId());
+        rel.setRoleId(dto.getRoleId());
+        UserTenantRoleRelation saved = userTenantRoleRelationRepository.save(rel);
+        return toDto(saved);
     }
+
+
+
+    @Transactional
+    public UserTenantRoleRelationDto saveSIngle(UserTenantRoleRelationDto dto) {
+        return save(dto);
+    }
+
 
     @Transactional
     public void delete(Long relationId) {
-        UserEntity user = findUser(relationId);
-        user.setRole(null);
-        userRepository.save(user);
+        // Per compatibilità, relationId = userId
+        // Elimina tutte le relazioni per quell'user (su tutti i tenant e ruoli)
+        List<UserTenantRoleRelation> rels = userTenantRoleRelationRepository.findByUserIdAndTenantId(relationId, null);
+        userTenantRoleRelationRepository.deleteAll(rels);
     }
 
-    private UserTenantRoleRelationDto toDto(UserEntity user, Long tenantId) {
+    @Transactional
+    public void deleteByUserTenantRole(Long userId, Long tenantId, String roleId) {
+        userTenantRoleRelationRepository.deleteByUserIdAndTenantIdAndRoleId(userId, tenantId, roleId);
+    }
+
+
+    private UserTenantRoleRelationDto toDto(UserTenantRoleRelation rel) {
         UserTenantRoleRelationDto dto = new UserTenantRoleRelationDto();
-        dto.setId(user.getId());
-        dto.setUserId(user.getId());
-        dto.setTenantId(tenantId);
-        dto.setRoleId(user.getRole().getId());
+        dto.setUserId(rel.getUserId());
+        dto.setTenantId(rel.getTenantId());
+        dto.setRoleId(rel.getRoleId());
         return dto;
     }
 

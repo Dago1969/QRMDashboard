@@ -40,4 +40,13 @@ public class UserTenantRoleRelationController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    // Nuovo endpoint per eliminare una relazione specifica user-tenant-ruolo
+    @DeleteMapping("/user/{userId}/tenant/{tenantId}/role/{roleId}")
+    public ResponseEntity<Void> deleteByUserTenantRole(@PathVariable Long userId,
+                                                      @PathVariable Long tenantId,
+                                                      @PathVariable String roleId) {
+        service.deleteByUserTenantRole(userId, tenantId, roleId);
+        return ResponseEntity.noContent().build();
+    }
 }
