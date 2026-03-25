@@ -1,11 +1,19 @@
 // ...existing code...
 // ...existing code...
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
-import { AuthService } from '../../core/auth.service';
+import { AuthService, DashboardResponse, DashboardUserProject } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
+
+interface DashboardRoleGroup {
+  client: string;
+  resourceRoles: string[];
+  realmRoles: string[];
+  projectCode?: string;
+  projectDescription?: string;
+}
 
 /**
  * Dashboard protetta che mostra dati utente ottenuti da endpoint backend autenticato.
@@ -13,19 +21,25 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgIf, NgFor],
+  imports: [NgIf, NgFor, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   message = '';
   username = '';
   subject = '';
-  // Raggruppamento per la view: [{ client, resourceRoles: string[], realmRoles: string[] }]
-  groupedClientRoles: Array<{ client: string; resourceRoles: string[]; realmRoles: string[] }> = [];
+  groupedClientRoles: DashboardRoleGroup[] = [];
+  userProjects: DashboardUserProject[] = [];
   decodedClaimsPretty = '';
   errorMessage = '';
+  isMessageFading = false;
+  isErrorFading = false;
   translations: Record<string, string> = {};
+  private messageFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private messageClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private errorFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private errorClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly authService: AuthService,
@@ -42,12 +56,12 @@ export class DashboardComponent implements OnInit {
     });
 
     this.authService.getDashboardData().subscribe({
-      next: (response) => {
-        this.message = response.message;
+      next: (response: DashboardResponse) => {
+        this.showSuccessMessage(response.message);
         this.username = response.username;
         this.subject = response.subject;
+        this.userProjects = Array.isArray(response.userProjects) ? response.userProjects : [];
 
-        // Raggruppa i box per client
         const resourceClients = Object.keys(response.clientRoles ?? {}).filter(client => client.toLowerCase() !== 'account').sort();
         const claims = response.decodedClaims ?? {};
         const realmAccess = (claims['realm_access'] as any)?.roles as string[] | undefined;
@@ -58,26 +72,43 @@ export class DashboardComponent implements OnInit {
         ];
         const customRealmRoles = (realmAccess ?? []).filter(r => !standardRoles.includes(r));
 
-        // Prepara la struttura raggruppata per la view
-        this.groupedClientRoles = resourceClients.map(client => {
-          // Resource roles ordinati
+        const projectsByClient = this.groupProjectsByClient(this.userProjects);
+        this.groupedClientRoles = resourceClients.flatMap((client) => {
           const resourceRoles = (response.clientRoles?.[client] ?? []).slice().sort();
-          // Realm roles ordinati
           const realmRoles = (customRealmRoles ?? []).slice().sort();
-          return {
+          const clientProjects = projectsByClient.get(client) ?? [];
+
+          // Se non ci sono progetti specifici, NON mostrare box progetto e passa undefined
+          if (clientProjects.length === 0) {
+            return [{
+              client,
+              resourceRoles,
+              realmRoles,
+              projectCode: undefined,
+              projectDescription: undefined
+            }];
+          }
+
+          return clientProjects.map((project) => ({
             client,
             resourceRoles,
-            realmRoles
-          };
+            realmRoles,
+            projectCode: project.projectCode,
+            projectDescription: project.projectDescription
+          }));
         });
 
         this.decodedClaimsPretty = JSON.stringify(response.decodedClaims ?? {}, null, 2);
       },
       error: () => {
-        this.errorMessage = this.t('dashboard.error.invalidToken');
-        this.cdr.detectChanges();
+        this.showErrorMessage(this.t('dashboard.error.invalidToken'));
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearMessageTimers();
+    this.clearErrorTimers();
   }
 
   logout(): void {
@@ -89,11 +120,11 @@ export class DashboardComponent implements OnInit {
     return this.translations[key] ?? key;
   }
 
-  openTenantsDashboard(client: string, role: string): void {
+  openTenantsDashboard(client: string, role: string, project?: string): void {
     const token = this.authService.getToken();
 
     if (!token) {
-      this.errorMessage = this.t('dashboard.error.jwtMissing');
+      this.showErrorMessage(this.t('dashboard.error.jwtMissing'));
       return;
     }
 
@@ -105,19 +136,95 @@ export class DashboardComponent implements OnInit {
             targetUrl.searchParams.set('token', token);
             targetUrl.searchParams.set('client', client);
             targetUrl.searchParams.set('role', role);
+            // Passa project solo se valorizzato
+            if (project !== undefined && project !== null && project !== '') {
+              targetUrl.searchParams.set('project', project);
+            }
             window.location.href = targetUrl.toString();
           },
           error: (error: HttpErrorResponse) => {
-            this.errorMessage = this.getTenantResolutionErrorMessage(error, role, client);
-            this.cdr.detectChanges();
+            this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
           }
         });
       },
       error: (error: HttpErrorResponse) => {
-        this.errorMessage = this.getTenantResolutionErrorMessage(error, role, client);
-        this.cdr.detectChanges();
+        this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
       }
     });
+  }
+
+  /**
+   * Mostra un banner verde temporaneo e lo dissolve automaticamente dopo 10 secondi.
+   */
+  private showSuccessMessage(message: string): void {
+    this.clearMessageTimers();
+    this.message = message;
+    this.isMessageFading = false;
+
+    if (!message) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.messageFadeTimeoutId = setTimeout(() => {
+      this.isMessageFading = true;
+      this.cdr.detectChanges();
+    }, 9000);
+
+    this.messageClearTimeoutId = setTimeout(() => {
+      this.message = '';
+      this.isMessageFading = false;
+      this.cdr.detectChanges();
+    }, 10000);
+  }
+
+  /**
+   * Mostra un banner rosso temporaneo e lo dissolve automaticamente dopo 15 secondi.
+   */
+  private showErrorMessage(message: string): void {
+    this.clearErrorTimers();
+    this.errorMessage = message;
+    this.isErrorFading = false;
+
+    if (!message) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.errorFadeTimeoutId = setTimeout(() => {
+      this.isErrorFading = true;
+      this.cdr.detectChanges();
+    }, 14000);
+
+    this.errorClearTimeoutId = setTimeout(() => {
+      this.errorMessage = '';
+      this.isErrorFading = false;
+      this.cdr.detectChanges();
+    }, 15000);
+
+    this.cdr.detectChanges();
+  }
+
+  private clearMessageTimers(): void {
+    if (this.messageFadeTimeoutId) {
+      clearTimeout(this.messageFadeTimeoutId);
+      this.messageFadeTimeoutId = null;
+    }
+    if (this.messageClearTimeoutId) {
+      clearTimeout(this.messageClearTimeoutId);
+      this.messageClearTimeoutId = null;
+    }
+  }
+
+  private clearErrorTimers(): void {
+    if (this.errorFadeTimeoutId) {
+      clearTimeout(this.errorFadeTimeoutId);
+      this.errorFadeTimeoutId = null;
+    }
+    if (this.errorClearTimeoutId) {
+      clearTimeout(this.errorClearTimeoutId);
+      this.errorClearTimeoutId = null;
+    }
   }
 
   private getTenantResolutionErrorMessage(error: HttpErrorResponse, role: string, client?: string): string {
@@ -157,7 +264,15 @@ export class DashboardComponent implements OnInit {
   }
 
   private buildTenantTargetUrl(rawTenantUrl: string): URL {
-    const targetUrl = new URL(rawTenantUrl);
+    const normalizedUrl = rawTenantUrl?.trim();
+
+    if (!normalizedUrl) {
+      return new URL('/dashboard', window.location.origin);
+    }
+
+    const targetUrl = /^https?:\/\//i.test(normalizedUrl)
+      ? new URL(normalizedUrl)
+      : new URL(normalizedUrl.startsWith('/') ? normalizedUrl : `/${normalizedUrl}`, window.location.origin);
 
     if (targetUrl.pathname === '' || targetUrl.pathname === '/') {
       targetUrl.pathname = '/dashboard';
@@ -166,11 +281,32 @@ export class DashboardComponent implements OnInit {
     return targetUrl;
   }
 
+  private groupProjectsByClient(userProjects: DashboardUserProject[]): Map<string, DashboardUserProject[]> {
+    return userProjects
+      .filter((project) => Boolean(project.tenantCode && project.projectCode))
+      .reduce((projectsByClient, project) => {
+        const clientCode = project.tenantCode as string;
+        const currentProjects = projectsByClient.get(clientCode) ?? [];
+        const alreadyAdded = currentProjects.some((currentProject) =>
+          currentProject.projectId === project.projectId
+          || currentProject.projectCode === project.projectCode
+        );
+
+        if (!alreadyAdded) {
+          projectsByClient.set(clientCode, [...currentProjects, project]);
+        }
+
+        return projectsByClient;
+      }, new Map<string, DashboardUserProject[]>());
+  }
+
   /**
    * Chiude la modale di errore e resetta il messaggio.
    */
   closeErrorModal(): void {
+    this.clearErrorTimers();
     this.errorMessage = '';
+    this.isErrorFading = false;
     this.cdr.detectChanges();
   }
 }

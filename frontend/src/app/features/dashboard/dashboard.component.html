@@ -5,22 +5,43 @@
       <button class="btn btn-danger" (click)="logout()">{{ t('dashboard.action.logout') }}</button>
     </div>
 
-    <p *ngIf="message"><strong>{{ t('dashboard.label.message') }}</strong> {{ message }}</p>
+    <!-- Link rapido a test servizi QTMPatients -->
+    <div style="margin: 1em 0;">
+      <a routerLink="/patients-tester" class="btn btn-success">
+        🔬 {{ t('dashboard.menu.patientsTester') }}
+      </a>
+    </div>
+
+    <p *ngIf="message" class="feedback-banner feedback-banner-success" [class.feedback-banner-fade-out]="isMessageFading">
+      <strong>{{ t('dashboard.label.message') }}</strong> {{ message }}
+    </p>
     <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
 
     <div *ngIf="groupedClientRoles.length > 0">
       <div *ngFor="let group of groupedClientRoles" class="client-group-card">
         <div class="client-group-title">{{ group.client }}</div>
+        <p *ngIf="group.projectCode" class="client-group-subtitle">
+          <strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span>
+        </p>
+        <p *ngIf="group.projectDescription && group.projectCode" class="client-group-subtitle">
+          <strong>{{ t('dashboard.label.projectDescription') }}</strong> {{ group.projectDescription }}
+        </p>
         <div class="client-roles-grid">
           <div *ngFor="let role of group.resourceRoles" class="client-role-box" role="group">
             <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }}</p>
-            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role)" tabindex="0">
+            <ng-container *ngIf="group.projectCode">
+              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
+            </ng-container>
+            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
           <div *ngFor="let role of group.realmRoles" class="client-role-box realm-role-box" role="group">
             <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }} <span class="realm-role-label">(realm)</span></p>
-            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role)" tabindex="0">
+            <ng-container *ngIf="group.projectCode">
+              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
+            </ng-container>
+            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
@@ -33,21 +54,12 @@
     <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
     <pre class="jwt-debug" *ngIf="decodedClaimsPretty">{{ decodedClaimsPretty }}</pre>
 
-    <!-- Modale di errore -->
-    <div class="modal-backdrop" *ngIf="errorMessage">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h4>{{ t('dashboard.error.title') || 'Errore' }}</h4>
-          </div>
-          <div class="modal-body">
-            <p>{{ errorMessage }}</p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-primary" (click)="closeErrorModal()">OK</button>
-          </div>
-        </div>
+    <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
+      <div class="feedback-banner-content">
+        <strong>{{ t('dashboard.error.title') }}</strong>
+        <p>{{ errorMessage }}</p>
       </div>
+      <button class="btn btn-primary btn-sm" (click)="closeErrorModal()">{{ t('common.ok') }}</button>
     </div>
   </div>
 </div>

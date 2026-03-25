@@ -1,44 +1,38 @@
 package com.qtm.dashboard.user.mapper;
 
-import com.qtm.dashboard.user.dto.UserDto;
-import com.qtm.dashboard.user.entity.RoleEntity;
+import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.user.entity.UserEntity;
 import org.springframework.stereotype.Component;
 
-import java.util.stream.Collectors;
-
 /**
- * Mapper dedicato alla conversione UserEntity -> UserDto.
+ * Mapper utente entity/dto.
  */
 @Component
 public class UserMapper {
 
-    private final RoleMapper roleMapper;
-
-    public UserMapper(RoleMapper roleMapper) {
-        this.roleMapper = roleMapper;
-    }
 
     public UserDto toDto(UserEntity entity) {
         UserDto dto = new UserDto();
         dto.setId(entity.getId());
         dto.setUsername(entity.getUsername());
-        dto.setEmail(entity.getEmail());
         dto.setEnabled(entity.isEnabled());
-        dto.setRoles(entity.getRoles().stream().map(roleMapper::toDto).toList());
+        dto.setRoleId(entity.getRole() != null ? entity.getRole().getId() : null);
+        dto.setStructureId(entity.getStructureId());
+        dto.setEmail(entity.getEmail());
+        // Mappa il campo passwordHash della entity nel campo password del DTO (solo per provisioning o uso tecnico)
+        dto.setPassword(entity.getPasswordHash());
         return dto;
     }
 
-    public UserEntity toEntity(String username, String email, String encodedPassword, Iterable<RoleEntity> roles) {
+    public UserEntity toEntity(UserDto dto) {
         UserEntity entity = new UserEntity();
-        entity.setUsername(username);
-        entity.setEmail(email);
-        entity.setPasswordHash(encodedPassword);
-        entity.setEnabled(true);
-        entity.setRoles(
-                java.util.stream.StreamSupport.stream(roles.spliterator(), false)
-                        .collect(Collectors.toSet())
-        );
+        entity.setId(dto.getId());
+        entity.setUsername(dto.getUsername());
+        entity.setEnabled(dto.isEnabled());
+        entity.setStructureId(dto.getStructureId());
+        entity.setEmail(dto.getEmail());
+        // Mappa il campo password del DTO nel campo passwordHash della entity (solo per provisioning o uso tecnico)
+        entity.setPasswordHash(dto.getPassword());
         return entity;
     }
 }

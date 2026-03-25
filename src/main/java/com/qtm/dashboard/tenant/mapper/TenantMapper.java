@@ -1,6 +1,7 @@
 package com.qtm.dashboard.tenant.mapper;
 
-import com.qtm.dashboard.tenant.dto.TenantAppPointerDto;
+
+import com.qtm.commonlib.dto.TenantDto;
 import com.qtm.dashboard.tenant.dto.TenantAppPointerUpsertRequestDto;
 import com.qtm.dashboard.tenant.entity.TenantAppPointerEntity;
 import org.springframework.stereotype.Component;
@@ -9,10 +10,10 @@ import org.springframework.stereotype.Component;
  * Mapper per conversioni entity/DTO dei puntamenti tenant app.
  */
 @Component
-public class TenantAppPointerMapper {
+public class TenantMapper {
 
-    public TenantAppPointerDto toDto(TenantAppPointerEntity entity) {
-        return TenantAppPointerDto.builder()
+    public TenantDto toDto(TenantAppPointerEntity entity) {
+        return TenantDto.builder()
                 .id(entity.getId())
                 .clientCode(entity.getClientCode())
                 .clientName(entity.getClientName())

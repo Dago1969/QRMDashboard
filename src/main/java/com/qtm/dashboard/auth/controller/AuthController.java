@@ -4,7 +4,7 @@ import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.dto.LoginResponse;
 import com.qtm.dashboard.auth.service.KeycloakAuthService;
 import com.qtm.dashboard.user.dto.RegisterRequest;
-import com.qtm.dashboard.user.dto.UserDto;
+import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

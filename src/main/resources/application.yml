@@ -26,19 +26,28 @@ spring:
 
 app:
   keycloak:
+    server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
+    realm: ${APP_KEYCLOAK_REALM:QTM}
     token-url: ${APP_KEYCLOAK_TOKEN_URL:http://localhost:8085/realms/QTM/protocol/openid-connect/token}
     client-id: ${APP_KEYCLOAK_CLIENT_ID:postman-client}
+    client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
+    admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
+    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:xEO7e15BFOtGOoDk0MWufISzYZGdTWtc}
+    admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
+    client-association-attribute: ${APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE:qtm-client-id}
+  patients:
+    api-base-url: ${APP_PATIENTS_API_BASE_URL:http://localhost:8088/api}
   tenants:
-    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:4201/dashboard}
+    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:8087/dashboard}
     mappings:
       - client-code: app-cliente-A
         client-name: app-cliente-A
-        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:4201/dashboard}
+        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:8087/dashboard}
         enabled: true
       - client-code: app-cliente-B
         client-name: app-cliente-B
-        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:4201/dashboard}
+        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:8087/dashboard}
         enabled: true
 
 logging:

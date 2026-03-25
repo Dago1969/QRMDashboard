@@ -12,7 +12,11 @@ public interface TenantAppPointerRepository extends JpaRepository<TenantAppPoint
 
     Optional<TenantAppPointerEntity> findByClientCode(String clientCode);
 
+    Optional<TenantAppPointerEntity> findByClientNameIgnoreCase(String clientName);
+
     Optional<TenantAppPointerEntity> findByClientCodeAndEnabledTrue(String clientCode);
+
+    Optional<TenantAppPointerEntity> findByClientNameIgnoreCaseAndEnabledTrue(String clientName);
 
     boolean existsByClientCode(String clientCode);
 }

@@ -1,46 +1,50 @@
-/* Modale errore */
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+.project-name-red {
+  color: #b00020;
+  font-weight: bold;
+}
+@keyframes feedbackFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
-.modal-dialog {
-  background: #fff;
+.feedback-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px 16px;
   border-radius: 10px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-  min-width: 320px;
-  max-width: 90vw;
-  padding: 0;
-  animation: modalIn 0.18s cubic-bezier(.4,0,.2,1);
+  border: 1px solid transparent;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
-.modal-content {
-  padding: 0 18px 18px 18px;
+.feedback-banner-content p {
+  margin: 6px 0 0;
 }
-.modal-header {
-  padding: 18px 0 8px 0;
-  border-bottom: 1px solid #eee;
+
+.feedback-banner-success {
+  color: #166534;
+  background: #ecfdf5;
+  border-color: #86efac;
 }
-.modal-body {
-  padding: 12px 0 8px 0;
+
+.feedback-banner-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fca5a5;
 }
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 8px;
+
+.feedback-banner-fade-out {
+  animation: feedbackFadeOut 1s ease forwards;
 }
-@keyframes modalIn {
-  from { transform: translateY(-30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
+
 /* Evidenzia il messaggio di errore */
 .error {
   color: #b00020;
@@ -68,6 +72,12 @@
   margin-bottom: 8px;
   color: #2a2a2a;
 }
+
+.client-group-subtitle {
+  margin: 0 0 8px 0;
+  color: #475569;
+}
+
 /*
   Stili dashboard.
  */
