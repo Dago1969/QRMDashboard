@@ -78,14 +78,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
           const realmRoles = (customRealmRoles ?? []).slice().sort();
           const clientProjects = projectsByClient.get(client) ?? [];
 
-          // Se non ci sono progetti specifici, NON mostrare box progetto e passa null
+          // Se non ci sono progetti specifici, NON mostrare box progetto e passa undefined
           if (clientProjects.length === 0) {
             return [{
               client,
               resourceRoles,
               realmRoles,
-              projectCode: null,
-              projectDescription: null
+              projectCode: undefined,
+              projectDescription: undefined
             }];
           }
 

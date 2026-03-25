@@ -18,9 +18,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ProblemDetail handleResponseStatusException(ResponseStatusException exception) {
         HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
-        String detail = exception.getReason() == null || exception.getReason().isBlank()
+        String reason = exception.getReason();
+        String detail = reason == null || reason.isBlank()
                 ? status.getReasonPhrase()
-                : exception.getReason();
+                : reason;
         log.error("ResponseStatusException gestita in QTMDB: status={}, detail={}", status.value(), detail, exception);
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
         problemDetail.setTitle(status.getReasonPhrase());

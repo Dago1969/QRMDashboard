@@ -32,7 +32,7 @@
             <ng-container *ngIf="group.projectCode">
               <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
             </ng-container>
-            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ? group.projectCode : null)" tabindex="0">
+            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
@@ -41,7 +41,7 @@
             <ng-container *ngIf="group.projectCode">
               <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
             </ng-container>
-            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ? group.projectCode : null)" tabindex="0">
+            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
