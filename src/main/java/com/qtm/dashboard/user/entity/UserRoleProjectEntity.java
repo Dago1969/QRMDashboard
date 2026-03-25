@@ -19,7 +19,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @IdClass(UserRoleProjectId.class)
 public class UserRoleProjectEntity {
-
+ 
     @Id
     @Column(name = "user_id", nullable = false)
     private Long userId;
