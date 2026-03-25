@@ -17,29 +17,22 @@
     </p>
     <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
 
-    <div *ngIf="groupedClientRoles.length > 0">
-      <div *ngFor="let group of groupedClientRoles" class="client-group-card">
-        <div class="client-group-title">{{ group.client }}</div>
+
+    <div *ngIf="userProjects.length > 0">
+      <div class="client-group-card">
+        <div class="client-group-title">Profili abilitati</div>
         <div class="client-roles-grid">
-          <div *ngFor="let role of group.resourceRoles" class="client-role-box" role="group">
-            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }}</p>
-            <p><strong>Progetto:</strong> {{ group.project }}</p>
-            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.project)" tabindex="0">
-              {{ t('dashboard.menu.cta') }}
-            </button>
-          </div>
-          <div *ngFor="let role of group.realmRoles" class="client-role-box realm-role-box" role="group">
-            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }} <span class="realm-role-label">(realm)</span></p>
-            <p><strong>Progetto:</strong> {{ group.project }}</p>
-            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.project)" tabindex="0">
-              {{ t('dashboard.menu.cta') }}
-            </button>
+          <div *ngFor="let profilo of userProjects" class="client-role-box" role="group">
+            <p><strong>User:</strong> {{ profilo.userId }}</p>
+            <p><strong>Tenant:</strong> {{ profilo.tenantId }}</p>
+            <p><strong>Ruolo:</strong> {{ profilo.roleId }}</p>
+            <p><strong>Progetto:</strong> {{ profilo.projectId }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <p *ngIf="groupedClientRoles.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
+    <p *ngIf="userProjects.length === 0"><strong>Nessun profilo abilitato trovato</strong></p>
 
     <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
     <pre class="jwt-debug" *ngIf="decodedClaimsPretty">{{ decodedClaimsPretty }}</pre>

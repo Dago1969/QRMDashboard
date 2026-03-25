@@ -4,7 +4,7 @@ import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
-import { AuthService } from '../../core/auth.service';
+import { AuthService, UserRoleTenantProjectDto } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
 
 /**
@@ -21,8 +21,8 @@ export class DashboardComponent implements OnInit {
   message = '';
   username = '';
   subject = '';
-  // Raggruppamento per la view: [{ client, resourceRoles: string[], realmRoles: string[], project: string }]
-  groupedClientRoles: Array<{ client: string; resourceRoles: string[]; realmRoles: string[]; project: string }> = [];
+  // Box: [{ projectId, roleId, tenantId }]
+  userProjects: UserRoleTenantProjectDto[] = [];
   decodedClaimsPretty = '';
   errorMessage = '';
   isMessageFading = false;
@@ -53,34 +53,23 @@ export class DashboardComponent implements OnInit {
         this.username = response.username;
         this.subject = response.subject;
 
-        // Raggruppa i box per client
-        const resourceClients = Object.keys(response.clientRoles ?? {}).filter(client => client.toLowerCase() !== 'account').sort();
         const claims = response.decodedClaims ?? {};
-        const realmAccess = (claims['realm_access'] as any)?.roles as string[] | undefined;
-        const standardRoles = [
-          'default-roles-qtm',
-          'offline_access',
-          'uma_authorization'
-        ];
-        const customRealmRoles = (realmAccess ?? []).filter(r => !standardRoles.includes(r));
+        const userId = this.toNumericClaim(claims['user_id']) ?? this.toNumericClaim(claims['userId']);
+        const tenantId = this.toNumericClaim(claims['tenant_id']) ?? this.toNumericClaim(claims['tenantId']);
 
-        // Prepara la struttura raggruppata per la view
-        this.groupedClientRoles = resourceClients.map(client => {
-          // Resource roles ordinati
-          const resourceRoles = (response.clientRoles?.[client] ?? []).slice().sort();
-          // Realm roles ordinati
-          const realmRoles = (customRealmRoles ?? []).slice().sort();
-          // project dinamico: qui lo valorizzo con il nome del client, ma puoi personalizzare la logica
-          const project = client;
-          return {
-            client,
-            resourceRoles,
-            realmRoles,
-            project
-          };
-        });
+        if (userId !== null && tenantId !== null) {
+          this.authService.getUserRoleTenantProjects(userId, tenantId).subscribe({
+            next: (projects) => {
+              this.userProjects = projects;
+              this.cdr.detectChanges();
+            },
+            error: () => {
+              this.showErrorMessage('Errore nel recupero dei profili abilitati');
+            }
+          });
+        }
 
-        this.decodedClaimsPretty = JSON.stringify(response.decodedClaims ?? {}, null, 2);
+        this.decodedClaimsPretty = JSON.stringify(claims, null, 2);
       },
       error: () => {
         this.showErrorMessage(this.t('dashboard.error.invalidToken'));
@@ -268,5 +257,18 @@ export class DashboardComponent implements OnInit {
     this.errorMessage = '';
     this.isErrorFading = false;
     this.cdr.detectChanges();
+  }
+
+  private toNumericClaim(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
   }
 }

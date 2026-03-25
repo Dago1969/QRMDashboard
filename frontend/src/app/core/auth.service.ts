@@ -1,3 +1,9 @@
+export interface UserRoleTenantProjectDto {
+  userId: number;
+  tenantId: number;
+  roleId: string;
+  projectId: string;
+}
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
@@ -32,6 +38,12 @@ export class AuthService {
   private readonly tokenStorageKey = 'qtm_access_token';
 
   constructor(private readonly http: HttpClient) {}
+  /**
+   * Recupera i profili (progetti) abilitati per user e tenant.
+   */
+  getUserRoleTenantProjects(userId: number, tenantId: number): Observable<UserRoleTenantProjectDto[]> {
+    return this.http.get<UserRoleTenantProjectDto[]>(`${environment.apiBaseUrl}/user-role-tenant-project/user/${userId}/tenant/${tenantId}`);
+  }
 
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http
