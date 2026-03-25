@@ -23,12 +23,14 @@
         <div class="client-roles-grid">
           <div *ngFor="let role of group.resourceRoles" class="client-role-box" role="group">
             <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }}</p>
+            <p><strong>Progetto:</strong> {{ group.project }}</p>
             <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.project)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
           <div *ngFor="let role of group.realmRoles" class="client-role-box realm-role-box" role="group">
             <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }} <span class="realm-role-label">(realm)</span></p>
+            <p><strong>Progetto:</strong> {{ group.project }}</p>
             <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.project)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
