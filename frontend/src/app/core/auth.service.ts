@@ -31,6 +31,7 @@ export interface DashboardUserProject {
   projectDescription?: string;
   superuser: boolean;
   email?: string;
+  roleId?: string;
 }
 
 interface TenantResolutionResponse {

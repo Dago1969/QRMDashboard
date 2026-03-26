@@ -17,31 +17,21 @@
     </p>
     <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
 
-    <div *ngIf="groupedClientRoles.length > 0">
-      <div *ngFor="let group of groupedClientRoles" class="client-group-card">
-        <div class="client-group-title">{{ group.client }}</div>
-        <p *ngIf="group.projectCode" class="client-group-subtitle">
-          <strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span>
-        </p>
-        <p *ngIf="group.projectDescription && group.projectCode" class="client-group-subtitle">
-          <strong>{{ t('dashboard.label.projectDescription') }}</strong> {{ group.projectDescription }}
+
+    <div *ngIf="groupedProjects.length > 0">
+      <div *ngFor="let group of groupedProjects" class="client-group-card">
+        <div class="client-group-title">{{ group.tenantCode }}</div>
+        <p class="client-group-subtitle">
+          <strong>{{ t('dashboard.label.tenant') }}</strong> <span class="tenant-name">{{ group.tenantName || group.tenantCode || '-' }}</span>
         </p>
         <div class="client-roles-grid">
-          <div *ngFor="let role of group.resourceRoles" class="client-role-box" role="group">
-            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }}</p>
-            <ng-container *ngIf="group.projectCode">
-              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
-            </ng-container>
-            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
-              {{ t('dashboard.menu.cta') }}
-            </button>
-          </div>
-          <div *ngFor="let role of group.realmRoles" class="client-role-box realm-role-box" role="group">
-            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }} <span class="realm-role-label">(realm)</span></p>
-            <ng-container *ngIf="group.projectCode">
-              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
-            </ng-container>
-            <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
+          <div *ngFor="let project of group.projects" class="client-role-box" role="group">
+            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ project.roleId }}</p>
+            <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ project.projectCode || 'Tutti' }}</span></p>
+            <p *ngIf="project.projectDescription && project.projectCode" class="client-group-subtitle">
+              <strong>{{ t('dashboard.label.projectDescription') }}</strong> {{ project.projectDescription }}
+            </p>
+            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(project.tenantCode || '', project.roleId || '', project.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
@@ -49,10 +39,7 @@
       </div>
     </div>
 
-    <p *ngIf="groupedClientRoles.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
-
-    <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
-    <pre class="jwt-debug" *ngIf="decodedClaimsPretty">{{ decodedClaimsPretty }}</pre>
+    <p *ngIf="userProjects.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
 
     <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
       <div class="feedback-banner-content">
