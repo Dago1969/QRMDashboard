@@ -15,5 +15,5 @@ public interface UserRoleProjectRepository extends JpaRepository<UserRoleProject
 
     List<UserRoleProjectEntity> findByUserIdAndTenantIdOrderByRoleIdAscProjectIdAsc(Long userId, Long tenantId);
 
-    void deleteByUserIdAndTenantIdAndRoleIdAndProjectId(Long userId, Long tenantId, String roleId, String projectId);
+    void deleteByUserIdAndTenantIdAndRoleIdAndProjectId(Long userId, Long tenantId, String roleId, Long projectId);
 }

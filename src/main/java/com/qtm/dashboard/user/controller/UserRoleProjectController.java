@@ -39,7 +39,7 @@ public class UserRoleProjectController {
     public ResponseEntity<Void> delete(@PathVariable Long userId,
                                        @PathVariable Long tenantId,
                                        @PathVariable String roleId,
-                                       @PathVariable String projectId) {
+                                       @PathVariable Long projectId) {
         service.delete(userId, tenantId, roleId, projectId);
         return ResponseEntity.noContent().build();
     }

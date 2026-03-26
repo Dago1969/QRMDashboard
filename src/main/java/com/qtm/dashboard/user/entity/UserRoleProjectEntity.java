@@ -33,6 +33,6 @@ public class UserRoleProjectEntity {
     private String roleId;
 
     @Id
-    @Column(name = "project_id", nullable = false, length = 100)
-    private String projectId;
+    @Column(name = "project_id", nullable = false)
+    private Long projectId;
 }

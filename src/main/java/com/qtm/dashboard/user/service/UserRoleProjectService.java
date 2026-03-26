@@ -42,7 +42,7 @@ public class UserRoleProjectService {
         findRole(dto.getRoleId());
         findTenant(dto.getTenantId());
 
-        if (dto.getProjectId() == null || dto.getProjectId().isBlank()) {
+        if (dto.getProjectId() == null) {
             throw new ResponseStatusException(NOT_FOUND, "Progetto non valorizzato");
         }
 
@@ -50,12 +50,12 @@ public class UserRoleProjectService {
         entity.setUserId(dto.getUserId());
         entity.setTenantId(dto.getTenantId());
         entity.setRoleId(dto.getRoleId());
-        entity.setProjectId(dto.getProjectId().trim());
+        entity.setProjectId(dto.getProjectId());
         return toDto(repository.save(entity));
     }
 
     @Transactional
-    public void delete(Long userId, Long tenantId, String roleId, String projectId) {
+    public void delete(Long userId, Long tenantId, String roleId, Long projectId) {
         repository.deleteByUserIdAndTenantIdAndRoleIdAndProjectId(userId, tenantId, roleId, projectId);
     }
 
