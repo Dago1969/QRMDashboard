@@ -1,4 +1,8 @@
+
 package com.qtm.dashboard.user.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.qtm.commonlib.dto.UserRoleTenantProjectDto;
 import com.qtm.dashboard.tenant.repository.TenantAppPointerRepository;
@@ -25,14 +29,17 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @RequiredArgsConstructor
 public class UserRoleTenantProjectService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserRoleTenantProjectService.class);
+
     private final UserRoleTenantProjectRepository repository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final TenantAppPointerRepository tenantAppPointerRepository;
 
     @Transactional(readOnly = true)
-    public List<UserRoleTenantProjectDto> findByUserAndTenant(Long userId, Long tenantId) {
-        return repository.findByUserIdAndTenantIdOrderByRoleIdAscProjectIdAsc(userId, tenantId).stream()
+    public List<UserRoleTenantProjectDto> findByUserTenantAndRole(Long userId, Long tenantId, String roleId) {
+        log.debug("[UserRoleTenantProjectService] findByUserTenantAndRole userId={} tenantId={} roleId={}", userId, tenantId, roleId);
+        return repository.findByUserIdAndTenantIdAndRoleIdOrderByProjectIdAsc(userId, tenantId, roleId).stream()
                 .map(this::toDto)
                 .toList();
     }

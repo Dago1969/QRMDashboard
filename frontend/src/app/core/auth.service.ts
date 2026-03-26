@@ -1,8 +1,22 @@
+export interface UserTenantProjectRelationDto {
+  userId: number;
+  userCode: string;
+  tenantId: number;
+  tenantCode: string;
+  roleId: string;
+  roleCode: string;
+  projectId: string;
+  projectCode: string;
+}
 export interface UserRoleTenantProjectDto {
   userId: number;
+  userCode: string;
   tenantId: number;
+  tenantCode: string;
   roleId: string;
+  roleCode: string;
   projectId: string;
+  projectCode: string;
 }
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -21,6 +35,9 @@ interface DashboardResponse {
   message: string;
   username: string;
   subject: string;
+  userId: number | null;
+  tenantId: number | null;
+  roleId: string;
   clientRoles: Record<string, string[]>;
   decodedClaims: Record<string, unknown>;
 }
@@ -39,10 +56,17 @@ export class AuthService {
 
   constructor(private readonly http: HttpClient) {}
   /**
-   * Recupera i profili (progetti) abilitati per user e tenant.
+   * Recupera i profili (progetti) abilitati per user, tenant e ruolo.
    */
-  getUserRoleTenantProjects(userId: number, tenantId: number): Observable<UserRoleTenantProjectDto[]> {
-    return this.http.get<UserRoleTenantProjectDto[]>(`${environment.apiBaseUrl}/user-role-tenant-project/user/${userId}/tenant/${tenantId}`);
+  getUserRoleTenantProjects(userId: number, tenantId: number, roleId: string): Observable<UserRoleTenantProjectDto[]> {
+    return this.http.get<UserRoleTenantProjectDto[]>(`${environment.apiBaseUrl}/user-role-tenant-project/user/${userId}/tenant/${tenantId}/role/${encodeURIComponent(roleId)}`);
+  }
+
+  /**
+   * Recupera i profili (progetti) abilitati per userId (UserTenantProjectRelationController)
+   */
+  getUserTenantProjectRelationsByUserId(userId: number): Observable<UserTenantProjectRelationDto[]> {
+    return this.http.get<UserTenantProjectRelationDto[]>(`${environment.apiBaseUrl}/user-tenant-project/user/${userId}`);
   }
 
   login(username: string, password: string): Observable<LoginResponse> {
@@ -62,6 +86,13 @@ export class AuthService {
   }
 
   validateTenantRole(roleId: string): Observable<unknown> {
+    console.log('[AuthService] validateTenantRole - roleId:', roleId);
+    if (!roleId) {
+      // Evita chiamata con roleId non valido
+      return new Observable((observer) => {
+        observer.error('roleId is undefined or empty');
+      });
+    }
     return this.http.get(`${environment.tenantsApiBaseUrl}/authorizations/roles/${encodeURIComponent(roleId)}`);
   }
 

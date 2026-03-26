@@ -4,7 +4,7 @@ import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
-import { AuthService, UserRoleTenantProjectDto } from '../../core/auth.service';
+import { AuthService, UserTenantProjectRelationDto } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
 
 /**
@@ -17,12 +17,13 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   message = '';
   username = '';
   subject = '';
   // Box: [{ projectId, roleId, tenantId }]
-  userProjects: UserRoleTenantProjectDto[] = [];
+  userProjects: UserTenantProjectRelationDto[] = [];
+  roleId: string = '';
   decodedClaimsPretty = '';
   errorMessage = '';
   isMessageFading = false;
@@ -52,13 +53,12 @@ export class DashboardComponent implements OnInit {
         this.showSuccessMessage(response.message);
         this.username = response.username;
         this.subject = response.subject;
+        this.roleId = response.roleId || '';
 
-        const claims = response.decodedClaims ?? {};
-        const userId = this.toNumericClaim(claims['user_id']) ?? this.toNumericClaim(claims['userId']);
-        const tenantId = this.toNumericClaim(claims['tenant_id']) ?? this.toNumericClaim(claims['tenantId']);
-
-        if (userId !== null && tenantId !== null) {
-          this.authService.getUserRoleTenantProjects(userId, tenantId).subscribe({
+        // Usa direttamente i campi della risposta
+        const userId = response.userId ?? null;
+        if (userId !== null) {
+          this.authService.getUserTenantProjectRelationsByUserId(userId).subscribe({
             next: (projects) => {
               this.userProjects = projects;
               this.cdr.detectChanges();
@@ -67,8 +67,12 @@ export class DashboardComponent implements OnInit {
               this.showErrorMessage('Errore nel recupero dei profili abilitati');
             }
           });
+        } else {
+          this.showErrorMessage('Impossibile determinare userId');
         }
 
+        // Mostra comunque i claims decodificati per debug
+        const claims = response.decodedClaims ?? {};
         this.decodedClaimsPretty = JSON.stringify(claims, null, 2);
       },
       error: () => {
@@ -91,32 +95,43 @@ export class DashboardComponent implements OnInit {
     return this.translations[key] ?? key;
   }
 
-  openTenantsDashboard(client: string, role: string, project: string): void {
+  openTenantsDashboard(client: string | number, role: string, project: string): void {
     const token = this.authService.getToken();
+    const clientCode = String(client);
+
+    // Trova il profilo corrispondente per loggare anche roleId
+    const profilo = this.userProjects.find(p => p.tenantCode === client && p.projectId === project);
+    const roleId = profilo ? profilo.roleId : undefined;
+    console.log('[DashboardComponent] openTenantsDashboard - client:', client, 'role (roleCode):', role, 'roleId:', roleId, 'project:', project);
+
+    if (!role) {
+      this.showErrorMessage('Ruolo non valorizzato (né roleCode né roleId). Impossibile proseguire.');
+      return;
+    }
 
     if (!token) {
       this.showErrorMessage(this.t('dashboard.error.jwtMissing'));
       return;
     }
 
-    this.authService.resolveTenantAppUrl(client).subscribe({
+    this.authService.resolveTenantAppUrl(clientCode).subscribe({
       next: (resolution) => {
         this.authService.validateTenantRole(role).subscribe({
           next: () => {
             const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
             targetUrl.searchParams.set('token', token);
-            targetUrl.searchParams.set('client', client);
+            targetUrl.searchParams.set('client', clientCode);
             targetUrl.searchParams.set('role', role);
             targetUrl.searchParams.set('project', project);
             window.location.href = targetUrl.toString();
           },
           error: (error: HttpErrorResponse) => {
-            this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
+            this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, clientCode));
           }
         });
       },
       error: (error: HttpErrorResponse) => {
-        this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
+        this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, clientCode));
       }
     });
   }
@@ -267,6 +282,15 @@ export class DashboardComponent implements OnInit {
     if (typeof value === 'string') {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  }
+
+  private toStringClaim(value: unknown): string | null {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : null;
     }
 
     return null;

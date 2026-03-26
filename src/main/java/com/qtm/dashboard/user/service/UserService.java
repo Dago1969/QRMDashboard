@@ -24,6 +24,12 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    @Transactional(readOnly = true)
+    public UserDto findByUsername(String username) {
+        return userRepository.findByUsernameIgnoreCase(username)
+                .map(userMapper::toDto)
+                .orElse(null);
+    }
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;

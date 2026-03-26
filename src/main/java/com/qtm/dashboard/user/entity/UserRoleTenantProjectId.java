@@ -1,20 +1,19 @@
 package com.qtm.dashboard.user.entity;
 
+import java.io.Serializable;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.io.Serializable;
-
 /**
- * Chiave composta per user_role_project.
+ * Composite key per UserRoleTenantProjectEntity.
  */
 @Getter
 @Setter
 @NoArgsConstructor
 @EqualsAndHashCode
-public class UserRoleProjectId implements Serializable {
+public class UserRoleTenantProjectId implements Serializable {
     private Long userId;
     private Long tenantId;
     private String roleId;

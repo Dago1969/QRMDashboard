@@ -20,13 +20,16 @@
 
     <div *ngIf="userProjects.length > 0">
       <div class="client-group-card">
-        <div class="client-group-title">Profili abilitati</div>
+        <div class="client-group-title">Accessi abilitati</div>
         <div class="client-roles-grid">
           <div *ngFor="let profilo of userProjects" class="client-role-box" role="group">
-            <p><strong>User:</strong> {{ profilo.userId }}</p>
-            <p><strong>Tenant:</strong> {{ profilo.tenantId }}</p>
-            <p><strong>Ruolo:</strong> {{ profilo.roleId }}</p>
-            <p><strong>Progetto:</strong> {{ profilo.projectId }}</p>
+            <p><strong>User:</strong> {{ username }}</p>
+            <p><strong>Tenant:</strong> {{ profilo.tenantCode }}</p>
+            <p><strong>Ruolo:</strong> {{ roleId }}</p>
+            <p><strong>Progetto:</strong> {{ profilo.projectCode }}</p>
+            <button class="btn btn-primary btn-sm" style="margin-top: 8px;" (click)="openTenantsDashboard(profilo.tenantCode, profilo.roleCode, profilo.projectId)">
+              Vai al progetto
+            </button>
           </div>
         </div>
       </div>

@@ -17,7 +17,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@IdClass(UserRoleProjectId.class)
+@IdClass(UserRoleTenantProjectId.class)
 public class UserRoleTenantProjectEntity {
 
     @Id

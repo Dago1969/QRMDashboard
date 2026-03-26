@@ -33,9 +33,11 @@ public class UserController {
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
+    private final com.qtm.dashboard.tenant.service.TenantService tenantService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, com.qtm.dashboard.tenant.service.TenantService tenantService) {
         this.userService = userService;
+        this.tenantService = tenantService;
     }
 
     @PostMapping
@@ -109,9 +111,68 @@ public class UserController {
         log.info("[QTMDashboard] JWT preferred_username: {}", preferredUsername);
         log.info("[QTMDashboard] JWT username: {}", username);
         log.info("[QTMDashboard] JWT claims: {}", jwt.getClaims());
+
+
+        // Estrazione tenantKey e roleId dal JWT (primo tenant e primo ruolo disponibili)
+        String tenantKey = null;
+        String roleId = null;
+        Object resourceAccessObj = jwt.getClaim("resource_access");
+        if (resourceAccessObj instanceof java.util.Map<?, ?> resourceAccess) {
+            for (Object key : resourceAccess.keySet()) {
+                if (key instanceof String tk) {
+                    tenantKey = tk;
+                    Object tenantObj = resourceAccess.get(tk);
+                    if (tenantObj instanceof java.util.Map<?, ?> tenantMap) {
+                        Object rolesObj = tenantMap.get("roles");
+                        if (rolesObj instanceof java.util.List<?> rolesList && !rolesList.isEmpty()) {
+                            Object firstRole = rolesList.get(0);
+                            if (firstRole != null) {
+                                roleId = firstRole.toString();
+                            }
+                        }
+                    }
+                    break; // Prendi solo il primo tenant
+                }
+            }
+        }
+
+        // Recupera tenantId reale tramite TenantService.findByClientCode(tenantKey)
+        Long tenantId = null;
+        if (tenantKey != null && !tenantKey.isBlank()) {
+            try {
+                var tenantOpt = tenantService.findByClientCode(tenantKey);
+                if (tenantOpt.isPresent() && tenantOpt.get().getId() != null) {
+                    tenantId = tenantOpt.get().getId();
+                }
+            } catch (Exception e) {
+                log.warn("[QTMDashboard] Impossibile recuperare tenantId per clientCode {}: {}", tenantKey, e.getMessage());
+            }
+        }
+        log.info("[QTMDashboard] Calcolato tenantKey: {}", tenantKey);
+        log.info("[QTMDashboard] Calcolato tenantId: {}", tenantId);
+        log.info("[QTMDashboard] Calcolato roleId: {}", roleId);
+
+        // Recupera userId tramite UserService.findByUsername
+        String effectiveUsername = (preferredUsername != null && !preferredUsername.isBlank()) ? preferredUsername : username;
+        Long userId = null;
+        if (effectiveUsername != null && !effectiveUsername.isBlank()) {
+            try {
+                UserDto user = userService.findByUsername(effectiveUsername);
+                if (user != null && user.getId() != null) {
+                    userId = user.getId();
+                    log.info("[QTMDashboard] JWT userid: {}", userId);
+                }
+            } catch (Exception e) {
+                log.warn("[QTMDashboard] Impossibile recuperare userId per username {}: {}", effectiveUsername, e.getMessage());
+            }
+        }
+
         response.put("message", "Accesso dashboard autorizzato");
-        response.put("username", preferredUsername);
+        response.put("username", effectiveUsername);
+        response.put("userId", userId);
         response.put("subject", sub);
+        response.put("tenantId", tenantId);
+        response.put("roleId", roleId);
         response.put("clientRoles", clientRoles);
         response.put("decodedClaims", extractDecodedClaims(jwt));
         return ResponseEntity.ok(response);
