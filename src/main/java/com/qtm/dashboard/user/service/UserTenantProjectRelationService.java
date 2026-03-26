@@ -2,8 +2,9 @@ package com.qtm.dashboard.user.service;
 
 import com.qtm.commonlib.dto.UserTenantProjectRelationDto;
 import com.qtm.dashboard.user.entity.UserTenantProjectRelation;
+import com.qtm.dashboard.user.entity.UserRoleProjectEntity;
 import com.qtm.dashboard.user.mapper.UserTenantProjectRelationMapper;
-import com.qtm.dashboard.user.repository.UserTenantProjectRelationRepository;
+import com.qtm.dashboard.user.repository.UserRoleProjectRepository;
 import com.qtm.dashboard.project.entity.ProjectEntity;
 import com.qtm.dashboard.project.repository.ProjectRepository;
 import com.qtm.dashboard.user.entity.UserEntity;
@@ -15,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
  * Service per la gestione della relazione User-Tenant-Project.
@@ -33,7 +32,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class UserTenantProjectRelationService {
     private static final Logger log = LoggerFactory.getLogger(UserTenantProjectRelationService.class);
     @Autowired
-    private UserTenantProjectRelationRepository repository;
+    private UserRoleProjectRepository repository;
     @Autowired
     private UserTenantProjectRelationMapper mapper;
     @Autowired
@@ -45,10 +44,18 @@ public class UserTenantProjectRelationService {
 
     public List<UserTenantProjectRelationDto> findByUserId(Long userId) {
         log.info("[Service] findByUserId chiamato con userId={}", userId);
-        List<UserTenantProjectRelation> list = repository.findByUserIdWithFetch(userId);
+        List<UserRoleProjectEntity> list = repository.findByUserId(userId);
         log.info("[Service] findByUserId trovate relazioni: {}", list.size());
+        // Mappatura da UserRoleProjectEntity a UserTenantProjectRelationDto da implementare se necessario
         return list.stream()
-            .map(mapper::toDto)
+            .map(entity -> {
+                UserTenantProjectRelationDto dto = new UserTenantProjectRelationDto();
+                dto.setUserId(entity.getUserId());
+                dto.setTenantId(entity.getTenantId());
+                dto.setProjectId(entity.getProjectId());
+                dto.setRoleId(entity.getRoleId());
+                return dto;
+            })
             .collect(Collectors.toList());
     }
 
@@ -79,28 +86,48 @@ public class UserTenantProjectRelationService {
 
     public List<UserTenantProjectRelationDto> findByTenantId(Long tenantId, boolean onlySuperuser) {
         log.info("[Service] findByTenantId chiamato con tenantId={}, onlySuperuser={}", tenantId, onlySuperuser);
-        List<UserTenantProjectRelation> list = repository.findByTenantIdWithFetch(tenantId);
+        List<UserRoleProjectEntity> list = repository.findByTenantId(tenantId);
         log.info("[Service] findByTenantId trovate relazioni: {}", list.size());
         return list.stream()
-            .filter(rel -> !onlySuperuser || rel.isSuperuser())
-            .map(mapper::toDto)
+            .map(entity -> {
+                UserTenantProjectRelationDto dto = new UserTenantProjectRelationDto();
+                dto.setUserId(entity.getUserId());
+                dto.setTenantId(entity.getTenantId());
+                dto.setProjectId(entity.getProjectId());
+                dto.setRoleId(entity.getRoleId());
+                return dto;
+            })
             .collect(Collectors.toList());
     }
 
     public List<UserTenantProjectRelationDto> findByProjectId(Long projectId) {
         log.info("[Service] findByProjectId chiamato con projectId={}", projectId);
-        List<UserTenantProjectRelation> list = repository.findByProjectIdWithFetch(projectId);
+        List<UserRoleProjectEntity> list = repository.findByProjectId(projectId);
         log.info("[Service] findByProjectId trovate relazioni: {}", list.size());
         return list.stream()
-            .map(mapper::toDto)
+            .map(entity -> {
+                UserTenantProjectRelationDto dto = new UserTenantProjectRelationDto();
+                dto.setUserId(entity.getUserId());
+                dto.setTenantId(entity.getTenantId());
+                dto.setProjectId(entity.getProjectId());
+                dto.setRoleId(entity.getRoleId());
+                return dto;
+            })
             .collect(Collectors.toList());
     }
 
     public List<UserTenantProjectRelationDto> findByUserIdAndTenantId(Long userId, Long tenantId) {
         log.info("[Service] findByUserIdAndTenantId chiamato con userId={} tenantId={}", userId, tenantId);
-        return repository.findByUserIdAndTenantIdWithFetch(userId, tenantId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+        return repository.findByUserIdAndTenantIdOrderByRoleIdAscProjectIdAsc(userId, tenantId).stream()
+            .map(entity -> {
+                UserTenantProjectRelationDto dto = new UserTenantProjectRelationDto();
+                dto.setUserId(entity.getUserId());
+                dto.setTenantId(entity.getTenantId());
+                dto.setProjectId(entity.getProjectId());
+                dto.setRoleId(entity.getRoleId());
+                return dto;
+            })
+            .collect(Collectors.toList());
     }
 
     @Transactional
@@ -126,23 +153,31 @@ public class UserTenantProjectRelationService {
         entity.setProject(project);
         entity.setUser(user);
         entity.setTenant(tenant);
-        UserTenantProjectRelation saved = repository.save(entity);
+        // Conversione da UserTenantProjectRelationDto a UserRoleProjectEntity
+        UserRoleProjectEntity newEntity = new UserRoleProjectEntity();
+        newEntity.setUserId(dto.getUserId());
+        newEntity.setTenantId(dto.getTenantId());
+        newEntity.setProjectId(dto.getProjectId());
+        newEntity.setRoleId(dto.getRoleId());
+        UserRoleProjectEntity saved = repository.save(newEntity);
         log.info("[Service] save relazione salvata per tenant_id={}, user_id={}, project_id={}",
-            (saved.getTenant() != null ? saved.getTenant().getId() : null),
-            (saved.getUser() != null ? saved.getUser().getId() : null),
-            (saved.getProject() != null ? saved.getProject().getId() : null));
-        return mapper.toDto(saved);
+            saved.getTenantId(), saved.getUserId(), saved.getProjectId());
+        UserTenantProjectRelationDto result = new UserTenantProjectRelationDto();
+        result.setUserId(saved.getUserId());
+        result.setTenantId(saved.getTenantId());
+        result.setProjectId(saved.getProjectId());
+        result.setRoleId(saved.getRoleId());
+        return result;
     }
 
     @Transactional
     public void delete(Long userId, Long tenantId, Long projectId) {
         log.info("[Service] delete chiamato con userId={} tenantId={} projectId={}", userId, tenantId, projectId);
-        UserTenantProjectRelation relation = repository.findByUserIdAndTenantIdAndProjectIdWithFetch(userId, tenantId, projectId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        NOT_FOUND,
-                        "Relazione user-tenant-project non trovata"
-                ));
-        repository.delete(relation);
+        // In UserRoleProjectRepository serve anche roleId, qui si assume null o da ricavare
+        // Se non disponibile, va adattata la logica
+        // repository.deleteByUserIdAndTenantIdAndRoleIdAndProjectId(userId, tenantId, roleId, projectId);
+        // Per ora, non implementato senza roleId
+        throw new UnsupportedOperationException("delete richiede roleId per UserRoleProjectRepository");
     }
 
     private List<UserTenantProjectRelationDto> collapseTenantProjectsForDashboard(List<UserTenantProjectRelationDto> tenantRelations) {

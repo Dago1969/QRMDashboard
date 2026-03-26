@@ -20,8 +20,8 @@
     <div *ngIf="groupedClientRoles.length > 0">
       <div *ngFor="let group of groupedClientRoles" class="client-group-card">
         <div class="client-group-title">{{ group.client }}</div>
-        <p *ngIf="group.projectCode" class="client-group-subtitle">
-          <strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span>
+        <p class="client-group-subtitle">
+          <strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode || 'Tutti' }}</span>
         </p>
         <p *ngIf="group.projectDescription && group.projectCode" class="client-group-subtitle">
           <strong>{{ t('dashboard.label.projectDescription') }}</strong> {{ group.projectDescription }}
@@ -29,18 +29,14 @@
         <div class="client-roles-grid">
           <div *ngFor="let role of group.resourceRoles" class="client-role-box" role="group">
             <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }}</p>
-            <ng-container *ngIf="group.projectCode">
-              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
-            </ng-container>
+            <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode || 'Tutti' }}</span></p>
             <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
           </div>
           <div *ngFor="let role of group.realmRoles" class="client-role-box realm-role-box" role="group">
             <p><strong>{{ t('dashboard.label.role') }}</strong> {{ role }} <span class="realm-role-label">(realm)</span></p>
-            <ng-container *ngIf="group.projectCode">
-              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode }}</span></p>
-            </ng-container>
+            <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ group.projectCode || 'Tutti' }}</span></p>
             <button class="btn btn-outline-primary btn-sm" (click)="openTenantsDashboard(group.client, role, group.projectCode ?? undefined)" tabindex="0">
               {{ t('dashboard.menu.cta') }}
             </button>
