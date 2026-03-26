@@ -46,17 +46,40 @@ public class UserTenantProjectRelationService {
         log.info("[Service] findByUserId chiamato con userId={}", userId);
         List<UserRoleProjectEntity> list = repository.findByUserId(userId);
         log.info("[Service] findByUserId trovate relazioni: {}", list.size());
-        // Mappatura da UserRoleProjectEntity a UserTenantProjectRelationDto da implementare se necessario
-        return list.stream()
+        List<UserTenantProjectRelationDto> dtos = list.stream()
             .map(entity -> {
                 UserTenantProjectRelationDto dto = new UserTenantProjectRelationDto();
                 dto.setUserId(entity.getUserId());
                 dto.setTenantId(entity.getTenantId());
                 dto.setProjectId(entity.getProjectId());
                 dto.setRoleId(entity.getRoleId());
+
+                // Popola tenant info
+                if (entity.getTenantId() != null) {
+                    tenantAppPointerRepository.findById(entity.getTenantId()).ifPresent(tenant -> {
+                        dto.setTenantCode(tenant.getClientCode());
+                        dto.setTenantName(tenant.getClientName());
+                    });
+                }
+
+                // Popola project info
+                if (entity.getProjectId() != null) {
+                    projectRepository.findById(entity.getProjectId()).ifPresent(project -> {
+                        dto.setProjectCode(project.getCode());
+                        dto.setProjectDescription(project.getDescrizione());
+                    });
+                }
+
+                // Qui puoi valorizzare altri campi se necessario
                 return dto;
             })
             .collect(Collectors.toList());
+        for (int i = 0; i < dtos.size(); i++) {
+            UserTenantProjectRelationDto dto = dtos.get(i);
+            log.info("[BOX {}] tenantId: {} | tenantCode: {} | tenantName: {} | projectId: {} | projectCode: {} | projectDescription: {} | roleId: {} | username: {} | email: {}",
+                i, dto.getTenantId(), dto.getTenantCode(), dto.getTenantName(), dto.getProjectId(), dto.getProjectCode(), dto.getProjectDescription(), dto.getRoleId(), dto.getUsername(), dto.getEmail());
+        }
+        return dtos;
     }
 
     /**
@@ -181,27 +204,24 @@ public class UserTenantProjectRelationService {
     }
 
     private List<UserTenantProjectRelationDto> collapseTenantProjectsForDashboard(List<UserTenantProjectRelationDto> tenantRelations) {
-        Set<Long> assignedProjectIds = tenantRelations.stream()
-            .map(UserTenantProjectRelationDto::getProjectId)
-            .filter(java.util.Objects::nonNull)
-            .collect(Collectors.toSet());
+        // Raggruppa per (roleId, projectId) unici
+        List<UserTenantProjectRelationDto> uniqueRoleProject = tenantRelations.stream()
+            .filter(dto -> dto.getRoleId() != null && dto.getProjectId() != null)
+            .collect(Collectors.collectingAndThen(
+                Collectors.toMap(
+                    dto -> dto.getRoleId() + "_" + dto.getProjectId(),
+                    dto -> dto,
+                    (dto1, dto2) -> dto1 // in caso di duplicati, tiene il primo
+                ),
+                m -> m.values().stream().toList()
+            ));
 
-        if (assignedProjectIds.isEmpty()) {
+        // Se non ci sono coppie ruolo-progetto, restituisci comunque tenantRelations
+        if (uniqueRoleProject.isEmpty()) {
             return tenantRelations;
         }
 
-        UserTenantProjectRelationDto firstRelation = tenantRelations.get(0);
-        Long tenantId = firstRelation.getTenantId();
-        Set<Long> availableProjectIds = projectRepository.findByTenant_Id(tenantId).stream()
-            .map(ProjectEntity::getId)
-            .collect(Collectors.toSet());
-
-        if (!availableProjectIds.isEmpty() && availableProjectIds.equals(assignedProjectIds)) {
-            log.info("[Service] Dashboard tenantId={} consolidato su box generale perche l'utente copre tutti i progetti", tenantId);
-            return List.of(buildTenantLevelRelation(firstRelation));
-        }
-
-        return tenantRelations;
+        return uniqueRoleProject;
     }
 
     private UserTenantProjectRelationDto buildTenantLevelRelation(UserTenantProjectRelationDto source) {

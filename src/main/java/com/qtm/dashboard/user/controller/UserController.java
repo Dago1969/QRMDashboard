@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Controller REST CRUD utenti centralizzati e dati dashboard.
@@ -105,22 +104,10 @@ public class UserController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> dashboard(@AuthenticationPrincipal Jwt jwt) {
-        Map<String, List<String>> clientRoles = extractClientRoles(jwt);
         Map<String, Object> response = new LinkedHashMap<>();
         String preferredUsername = jwt.getClaimAsString("preferred_username");
-        String username = jwt.getClaimAsString("username");
-        String sub = jwt.getSubject();
-        log.info("[QTMDashboard] JWT subject: {}", sub);
-        log.info("[QTMDashboard] JWT preferred_username: {}", preferredUsername);
-        log.info("[QTMDashboard] JWT username: {}", username);
-        log.info("[QTMDashboard] JWT claims: {}", jwt.getClaims());
         response.put("message", "Accesso dashboard autorizzato");
         response.put("username", preferredUsername);
-        response.put("subject", sub);
-        response.put("clientRoles", clientRoles);
-        response.put("decodedClaims", extractDecodedClaims(jwt));
-
-        // Risolvi userId dal preferred_username
         Long userId = null;
         if (preferredUsername != null && !preferredUsername.isBlank()) {
             try {
@@ -132,55 +119,12 @@ public class UserController {
         if (userId != null) {
             var projects = userTenantProjectRelationService.findDashboardProjectsByUserId(userId);
             response.put("userProjects", projects);
-            log.info("[QTMDashboard] Risposta dashboard userProjects: {}", projects);
         } else {
             response.put("userProjects", List.of());
         }
         return ResponseEntity.ok(response);
     }
 
-        private Map<String, Object> extractDecodedClaims(Jwt jwt) {
-        return jwt.getClaims().entrySet().stream()
-            .sorted(Map.Entry.comparingByKey())
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                Map.Entry::getValue,
-                (first, second) -> first,
-                LinkedHashMap::new
-            ));
-        }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, List<String>> extractClientRoles(Jwt jwt) {
-        Object resourceAccessObj = jwt.getClaim("resource_access");
-        if (!(resourceAccessObj instanceof Map<?, ?> resourceAccess)) {
-            return Map.of();
-        }
 
-        return resourceAccess.entrySet().stream()
-                .filter(entry -> entry.getKey() instanceof String)
-                .collect(Collectors.toMap(
-                        entry -> (String) entry.getKey(),
-                        entry -> extractRolesFromClientAccess(entry.getValue()),
-                        (first, second) -> first,
-                        LinkedHashMap::new
-                ));
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<String> extractRolesFromClientAccess(Object clientAccessObj) {
-        if (!(clientAccessObj instanceof Map<?, ?> clientAccessMap)) {
-            return List.of();
-        }
-
-        Object rolesObj = clientAccessMap.get("roles");
-        if (!(rolesObj instanceof List<?> rolesList)) {
-            return List.of();
-        }
-
-        return rolesList.stream()
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .toList();
-    }
 }

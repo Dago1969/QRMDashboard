@@ -4,16 +4,9 @@ import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
-import { AuthService, DashboardResponse, DashboardUserProject } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
 
-interface DashboardRoleGroup {
-  client: string;
-  resourceRoles: string[];
-  realmRoles: string[];
-  projectCode?: string;
-  projectDescription?: string;
-}
+import { AuthService, DashboardResponse, DashboardUserProject } from '../../core/auth.service';
 
 /**
  * Dashboard protetta che mostra dati utente ottenuti da endpoint backend autenticato.
@@ -29,9 +22,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   message = '';
   username = '';
   subject = '';
-  groupedClientRoles: DashboardRoleGroup[] = [];
   userProjects: DashboardUserProject[] = [];
-  decodedClaimsPretty = '';
+  groupedProjects: Array<{ tenantCode: string, tenantName: string, projects: DashboardUserProject[] }> = [];
   errorMessage = '';
   isMessageFading = false;
   isErrorFading = false;
@@ -62,43 +54,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.subject = response.subject;
         this.userProjects = Array.isArray(response.userProjects) ? response.userProjects : [];
 
-        const resourceClients = Object.keys(response.clientRoles ?? {}).filter(client => client.toLowerCase() !== 'account').sort();
-        const claims = response.decodedClaims ?? {};
-        const realmAccess = (claims['realm_access'] as any)?.roles as string[] | undefined;
-        const standardRoles = [
-          'default-roles-qtm',
-          'offline_access',
-          'uma_authorization'
-        ];
-        const customRealmRoles = (realmAccess ?? []).filter(r => !standardRoles.includes(r));
-
-        const projectsByClient = this.groupProjectsByClient(this.userProjects);
-        this.groupedClientRoles = resourceClients.flatMap((client) => {
-          const resourceRoles = (response.clientRoles?.[client] ?? []).slice().sort();
-          const realmRoles = (customRealmRoles ?? []).slice().sort();
-          const clientProjects = projectsByClient.get(client) ?? [];
-
-          // Se non ci sono progetti specifici, NON mostrare box progetto e passa undefined
-          if (clientProjects.length === 0) {
-            return [{
-              client,
-              resourceRoles,
-              realmRoles,
-              projectCode: undefined,
-              projectDescription: undefined
-            }];
+        // Raggruppa per tenantCode e tenantName
+        const grouped: { [tenantKey: string]: { tenantCode: string, tenantName: string, projects: DashboardUserProject[] } } = {};
+        this.userProjects.forEach(project => {
+          const key = project.tenantId || project.tenantCode || project.tenantName || 'unknown';
+          if (!grouped[key]) {
+            grouped[key] = {
+              tenantCode: project.tenantCode || '',
+              tenantName: project.tenantName || '',
+              projects: []
+            };
           }
-
-          return clientProjects.map((project) => ({
-            client,
-            resourceRoles,
-            realmRoles,
-            projectCode: project.projectCode,
-            projectDescription: project.projectDescription
-          }));
+          grouped[key].projects.push(project);
         });
+        this.groupedProjects = Object.values(grouped);
 
-        this.decodedClaimsPretty = JSON.stringify(response.decodedClaims ?? {}, null, 2);
+        // Log per debug
+        this.groupedProjects.forEach((group, idx) => {
+          console.log(`[SUPERBOX ${idx}] tenantName:`, group.tenantName, '| tenantCode:', group.tenantCode, '| progetti:', group.projects.length);
+        });
       },
       error: () => {
         this.showErrorMessage(this.t('dashboard.error.invalidToken'));
