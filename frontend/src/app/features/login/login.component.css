@@ -1,11 +1,44 @@
-/*
-  Stili della pagina login.
- */
+/* Allinea a destra il link di recupero password */
+.login-link-recover {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 16px 0;
+}
+/* Stili minimi: la card e il titolo, il resto è gestito globalmente */
 .login-card {
   max-width: 420px;
   margin: 72px auto;
 }
-
 h2 {
   margin-top: 0;
+}
+
+/* Centra il pulsante Accedi nel form login */
+.login-btn-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 16px;
+}
+
+/* Descrizione sotto il form login */
+.login-desc {
+  color: var(--TXT, #454F78);
+  text-align: center;
+  font-family: "Work Sans";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: -0.6px;
+  margin-top: 32px;
+}
+
+.login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
 }

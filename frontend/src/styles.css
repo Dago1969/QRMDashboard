@@ -1,11 +1,39 @@
-/*
-  Stili base minimali per la UI di login e dashboard.
- */
+:root {
+  /* Colori principali */
+  --Primary: #0E65FF;
+  --TXT: #454F78;
+  --Color-shadow: #A2E4FF;
+  --Grad-element: #E3F7FF;
+
+  /* Button Variables */
+  --button-display: flex;
+  --button-height: 36px;
+  --button-min-width: 100px;
+  --button-padding: 8px 16px;
+  --button-justify-content: center;
+  --button-align-items: center;
+  --button-gap: 10px;
+  --button-border-radius: 18px;
+  --button-background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) 0%, rgba(255, 255, 255, 0.50) 100%), var(--Primary);
+
+  /* Input Variables */
+  --input-display: flex;
+  --input-height: 36px;
+  --input-padding: 6px 16px; /* Bilanciato per centrare il testo */
+  --input-border-radius: 18px;
+  --input-background: linear-gradient(0deg, rgba(251, 251, 251, 0.50) 0%, rgba(251, 251, 251, 0.50) 100%), var(--Grad-element);
+
+  /* Text Variables */
+  --text-color: var(--Primary);
+  --text-font-family: "Work Sans", Arial, Helvetica, sans-serif;
+}
+
+/* --- Base Styles --- */
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--text-font-family);
   background: #f5f7fb;
-  color: #1c2434;
+  color: var(--text-color);
 }
 
 .container {
@@ -21,40 +49,115 @@ body {
   box-shadow: 0 8px 24px rgba(19, 31, 54, 0.08);
 }
 
+/* --- Typography --- */
+.text, label, p, span, h1, h2, h3, h4, h5, h6 {
+  color: var(--text-color);
+  font-family: var(--text-font-family);
+  font-size: 14px; /* Default leggibile */
+  font-weight: 400;
+}
+
+.text-light {
+  font-size: 10px;
+  text-align: center;
+}
+
+.text-dark, .text-desc {
+  color: var(--TXT);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: -0.6px;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  /* Questo trucco serve a mantenere il tuo colore Primary */
+  -webkit-text-fill-color: var(--Primary) !important;
+  
+  /* Questo trucco serve a "coprire" il giallino standard dell'autofill */
+  box-shadow: 0 0 0px 1000px #eef7ff inset !important; 
+  
+  /* Mantiene il font corretto */
+  font-family: "Work Sans", sans-serif !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* --- Input Styles --- */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+.recover-input {
+  display: var(--input-display);
+  width: 100%;
+  height: var(--input-height);
+  padding: var(--input-padding);
+  box-sizing: border-box;
+  border-radius: var(--input-border-radius);
+  border: 1px solid var(--Color-shadow);
+  background: var(--input-background);
+  color: var(--Primary); /* Testo input colore Primary */
+  font-weight: 600; /* Testo in grassetto come richiesto */
+  font-family: var(--text-font-family);
+  font-size: 14px;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+/* Placeholder color Primary per tutti i browser */
+input::placeholder { color: var(--Primary); opacity: 0.8; font-weight: 400 !important;}
+input::-webkit-input-placeholder { color: var(--Primary); font-weight: 400 !important;}
+input::-moz-placeholder { color: var(--Primary); font-weight: 400 !important;}
+input:-ms-input-placeholder { color: var(--Primary); font-weight: 400 !important; }
+
+/* --- Button Styles --- */
 .btn {
+  display: var(--button-display);
+  height: var(--button-height);
+  min-width: var(--button-min-width);
+  padding: var(--button-padding);
+  justify-content: var(--button-justify-content);
+  align-items: var(--button-align-items);
+  gap: var(--button-gap);
+  border-radius: var(--button-border-radius);
+  background: var(--button-background);
   border: 0;
-  border-radius: 8px;
-  padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
+  font-family: var(--text-font-family);
+  transition: opacity 0.2s;
 }
 
-.btn-primary {
-  background: #1f6feb;
-  color: #ffffff;
+.btn-primary { color: #ffffff; }
+
+.btn-outline {
+  background: #fff;
+  color: var(--Primary);
+  border: 2px solid var(--Primary);
 }
 
-.btn-danger {
-  background: #d1242f;
-  color: #ffffff;
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
+/* --- Links --- */
+.link-recover {
+  color: var(--Primary);
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
-input {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #ccd3df;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 14px;
-}
+.link-recover:hover { color: #003e99; }
 
-.error {
-  color: #b42318;
-  margin-top: 8px;
+/* --- Helpers --- */
+.recover-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 15px;
 }
