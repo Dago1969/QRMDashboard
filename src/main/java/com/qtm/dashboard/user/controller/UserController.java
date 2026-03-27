@@ -1,5 +1,8 @@
 package com.qtm.dashboard.user.controller;
 
+import org.springframework.web.server.ResponseStatusException;
+
+
 import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.user.service.UserService;
 import org.slf4j.Logger;
@@ -21,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Controller REST CRUD utenti centralizzati e dati dashboard.
@@ -33,9 +35,11 @@ public class UserController {
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
+    private final com.qtm.dashboard.user.service.UserTenantProjectRelationService userTenantProjectRelationService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, com.qtm.dashboard.user.service.UserTenantProjectRelationService userTenantProjectRelationService) {
         this.userService = userService;
+        this.userTenantProjectRelationService = userTenantProjectRelationService;
     }
 
     @PostMapping
@@ -100,65 +104,27 @@ public class UserController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> dashboard(@AuthenticationPrincipal Jwt jwt) {
-        Map<String, List<String>> clientRoles = extractClientRoles(jwt);
         Map<String, Object> response = new LinkedHashMap<>();
         String preferredUsername = jwt.getClaimAsString("preferred_username");
-        String username = jwt.getClaimAsString("username");
-        String sub = jwt.getSubject();
-        log.info("[QTMDashboard] JWT subject: {}", sub);
-        log.info("[QTMDashboard] JWT preferred_username: {}", preferredUsername);
-        log.info("[QTMDashboard] JWT username: {}", username);
-        log.info("[QTMDashboard] JWT claims: {}", jwt.getClaims());
         response.put("message", "Accesso dashboard autorizzato");
         response.put("username", preferredUsername);
-        response.put("subject", sub);
-        response.put("clientRoles", clientRoles);
-        response.put("decodedClaims", extractDecodedClaims(jwt));
+        Long userId = null;
+        if (preferredUsername != null && !preferredUsername.isBlank()) {
+            try {
+                userId = userService.findEntityByUsername(preferredUsername).getId();
+            } catch (ResponseStatusException ex) {
+                log.warn("[QTMDashboard] Utente non trovato per preferred_username: {}", preferredUsername);
+            }
+        }
+        if (userId != null) {
+            var projects = userTenantProjectRelationService.findDashboardProjectsByUserId(userId);
+            response.put("userProjects", projects);
+        } else {
+            response.put("userProjects", List.of());
+        }
         return ResponseEntity.ok(response);
     }
 
-        private Map<String, Object> extractDecodedClaims(Jwt jwt) {
-        return jwt.getClaims().entrySet().stream()
-            .sorted(Map.Entry.comparingByKey())
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                Map.Entry::getValue,
-                (first, second) -> first,
-                LinkedHashMap::new
-            ));
-        }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, List<String>> extractClientRoles(Jwt jwt) {
-        Object resourceAccessObj = jwt.getClaim("resource_access");
-        if (!(resourceAccessObj instanceof Map<?, ?> resourceAccess)) {
-            return Map.of();
-        }
 
-        return resourceAccess.entrySet().stream()
-                .filter(entry -> entry.getKey() instanceof String)
-                .collect(Collectors.toMap(
-                        entry -> (String) entry.getKey(),
-                        entry -> extractRolesFromClientAccess(entry.getValue()),
-                        (first, second) -> first,
-                        LinkedHashMap::new
-                ));
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<String> extractRolesFromClientAccess(Object clientAccessObj) {
-        if (!(clientAccessObj instanceof Map<?, ?> clientAccessMap)) {
-            return List.of();
-        }
-
-        Object rolesObj = clientAccessMap.get("roles");
-        if (!(rolesObj instanceof List<?> rolesList)) {
-            return List.of();
-        }
-
-        return rolesList.stream()
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .toList();
-    }
 }

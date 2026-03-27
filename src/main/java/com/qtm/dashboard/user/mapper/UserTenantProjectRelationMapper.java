@@ -22,11 +22,13 @@ public class UserTenantProjectRelationMapper {
         }
         if (entity.getTenant() != null) {
             dto.setTenantId(entity.getTenant().getId());
+            dto.setTenantCode(entity.getTenant().getClientCode());
             dto.setTenantName(entity.getTenant().getClientName());
         }
         if (entity.getProject() != null) {
             dto.setProjectId(entity.getProject().getId());
             dto.setProjectCode(entity.getProject().getCode());
+            dto.setProjectDescription(entity.getProject().getDescrizione());
         }
         return dto;
     }

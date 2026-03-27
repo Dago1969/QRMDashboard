@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -26,6 +27,12 @@ public class UserTenantProjectRelationController {
         return service.findByUserId(userId);
     }
 
+    @GetMapping("/user/{userId}/tenant/{tenantId}")
+    public List<UserTenantProjectRelationDto> getByUserAndTenant(@PathVariable Long userId, @PathVariable Long tenantId) {
+        log.info("[API] GET /api/user-tenant-project/user/{}/tenant/{}", userId, tenantId);
+        return service.findByUserIdAndTenantId(userId, tenantId);
+    }
+
     @GetMapping("/tenant/{tenantId}")
     public List<UserTenantProjectRelationDto> getByTenant(@PathVariable Long tenantId,
                                                          @RequestParam(required = false, defaultValue = "false") boolean onlySuperuser) {
@@ -43,5 +50,14 @@ public class UserTenantProjectRelationController {
     public UserTenantProjectRelationDto save(@RequestBody UserTenantProjectRelationDto dto) {
         log.info("[API] POST /api/user-tenant-project - Salvataggio relazione: {}", dto);
         return service.save(dto);
+    }
+
+    @DeleteMapping("/{userId}/{tenantId}/{projectId}")
+    public ResponseEntity<Void> delete(@PathVariable Long userId,
+                                       @PathVariable Long tenantId,
+                                       @PathVariable Long projectId) {
+        log.info("[API] DELETE /api/user-tenant-project/{}/{}/{}", userId, tenantId, projectId);
+        service.delete(userId, tenantId, projectId);
+        return ResponseEntity.noContent().build();
     }
 }

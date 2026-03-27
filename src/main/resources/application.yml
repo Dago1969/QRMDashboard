@@ -39,15 +39,15 @@ app:
   patients:
     api-base-url: ${APP_PATIENTS_API_BASE_URL:http://localhost:8088/api}
   tenants:
-    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:4201/dashboard}
+    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:8087/dashboard}
     mappings:
       - client-code: app-cliente-A
         client-name: app-cliente-A
-        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:4201/dashboard}
+        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:8087/dashboard}
         enabled: true
       - client-code: app-cliente-B
         client-name: app-cliente-B
-        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:4201/dashboard}
+        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:8087/dashboard}
         enabled: true
 
 logging:

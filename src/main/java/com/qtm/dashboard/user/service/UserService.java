@@ -24,6 +24,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    @Transactional(readOnly = true)
+    public UserEntity findEntityByUsername(String username) {
+        return userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente non trovato"));
+    }
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
