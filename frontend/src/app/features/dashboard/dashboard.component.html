@@ -41,6 +41,14 @@
 
     <p *ngIf="userProjects.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
 
+    <!-- Sezione decodifica JWT -->
+    <div *ngIf="jwtClaims" class="jwt-claims-section">
+      <h3>{{ t('dashboard.jwtDecodedClaims') }}</h3>
+      <pre style="background:#f5f5f5; border-radius:8px; padding:12px; font-size:13px; overflow-x:auto;">
+        {{ jwtClaims | json }}
+      </pre>
+    </div>
+
     <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
       <div class="feedback-banner-content">
         <strong>{{ t('dashboard.error.title') }}</strong>

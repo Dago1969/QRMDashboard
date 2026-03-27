@@ -1,6 +1,7 @@
 // ...existing code...
 // ...existing code...
 import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
+import { JsonPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
@@ -8,13 +9,17 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
 
 import { AuthService, DashboardResponse, DashboardUserProject } from '../../core/auth.service';
 
+interface JwtClaims {
+  [key: string]: unknown;
+}
+
 /**
  * Dashboard protetta che mostra dati utente ottenuti da endpoint backend autenticato.
  */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgIf, NgFor, RouterLink],
+  imports: [NgIf, NgFor, RouterLink, JsonPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -32,6 +37,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private messageClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private errorFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private errorClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  jwtClaims: JwtClaims | null = null;
 
   constructor(
     private readonly authService: AuthService,
@@ -73,11 +80,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.groupedProjects.forEach((group, idx) => {
           console.log(`[SUPERBOX ${idx}] tenantName:`, group.tenantName, '| tenantCode:', group.tenantCode, '| progetti:', group.projects.length);
         });
+
+        // Decodifica JWT all'avvio
+        this.jwtClaims = this.decodeJwtClaims();
       },
       error: () => {
         this.showErrorMessage(this.t('dashboard.error.invalidToken'));
       }
     });
+  }
+  /**
+   * Decodifica il JWT attualmente in uso e restituisce i claims come oggetto.
+   */
+  decodeJwtClaims(): JwtClaims | null {
+    const token = this.authService.getToken();
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    try {
+      const payload = this.decodeBase64Url(parts[1]);
+      return JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+
+  private decodeBase64Url(value: string): string {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const paddingLength = (4 - (base64.length % 4)) % 4;
+    const padded = base64 + '='.repeat(paddingLength);
+    return atob(padded);
   }
 
   ngOnDestroy(): void {
@@ -110,10 +142,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
             targetUrl.searchParams.set('token', token);
             targetUrl.searchParams.set('client', client);
             targetUrl.searchParams.set('role', role);
-            // Passa project solo se valorizzato
-            if (project !== undefined && project !== null && project !== '') {
-              targetUrl.searchParams.set('project', project);
-            }
+            // Passa sempre il parametro project, anche se vuoto
+            targetUrl.searchParams.set('project', project ?? '');
             window.location.href = targetUrl.toString();
           },
           error: (error: HttpErrorResponse) => {
@@ -203,35 +233,54 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private getTenantResolutionErrorMessage(error: HttpErrorResponse, role: string, client?: string): string {
     const clientName = client || 'TENANTS-APP';
+    const detail = this.extractErrorDetail(error);
+    // Mostra sempre il messaggio backend se presente e status 400/404
+    if ((error.status === 400 || error.status === 404) && detail) {
+      return detail;
+    }
     if (error.status === 404) {
       return this.t('dashboard.error.tenantRoleNotProvisioned')
         .replace('{role}', role)
         .replaceAll('{client}', clientName);
     }
-
-    const detail = this.extractErrorDetail(error).toLowerCase();
-    if (detail.includes('ruolo non trovato') || detail.includes('role not found')) {
+    if (detail.toLowerCase().includes('ruolo non trovato') || detail.toLowerCase().includes('role not found')) {
       return this.t('dashboard.error.tenantRoleNotProvisioned')
         .replace('{role}', role)
         .replaceAll('{client}', clientName);
     }
-
     return this.t('dashboard.error.tenantResolutionFailed');
   }
 
   private extractErrorDetail(error: HttpErrorResponse): string {
     const payload = error.error;
     if (typeof payload === 'string') {
+      try {
+        // Prova a fare il parse se è un JSON stringificato
+        const parsed = JSON.parse(payload);
+        if (parsed && typeof parsed === 'object') {
+          if (typeof parsed.detail === 'string') return parsed.detail;
+          if (typeof parsed.message === 'string') return parsed.message;
+        }
+      } catch {
+        // Non è JSON, restituisci la stringa
+        return payload;
+      }
       return payload;
     }
     if (payload && typeof payload === 'object') {
-      const detail = (payload as { detail?: unknown }).detail;
-      if (typeof detail === 'string') {
-        return detail;
+      if (typeof (payload as any).detail === 'string') {
+        return (payload as any).detail;
       }
-      const message = (payload as { message?: unknown }).message;
-      if (typeof message === 'string') {
-        return message;
+      if (typeof (payload as any).message === 'string') {
+        return (payload as any).message;
+      }
+      // Cerca ricorsivamente in oggetti annidati
+      for (const key of Object.keys(payload)) {
+        const val = (payload as any)[key];
+        if (val && typeof val === 'object') {
+          const nested = this.extractErrorDetail({ ...error, error: val });
+          if (nested) return nested;
+        }
       }
     }
     return '';

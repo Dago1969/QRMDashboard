@@ -13,6 +13,7 @@
   }
 }
 
+
 .feedback-banner {
   display: flex;
   align-items: flex-start;
@@ -23,6 +24,17 @@
   border-radius: 10px;
   border: 1px solid transparent;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  min-height: 48px;
+}
+
+.feedback-banner-sticky {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin-top: 0;
+  margin-bottom: 8px;
+  z-index: 100;
 }
 
 .feedback-banner-content p {

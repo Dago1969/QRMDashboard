@@ -1,3 +1,4 @@
+   
 package com.qtm.dashboard.user.service;
 
 import com.qtm.commonlib.dto.UserDto;
@@ -688,4 +689,43 @@ public class UserProvisioningService {
 
         return normalized.toLowerCase(Locale.ROOT).equals(normalized) ? normalized : value.trim();
     }
+    /**
+     * Rimuove il ruolo specificato dal client (tenant) in Keycloak per l'utente indicato.
+     */
+    @Transactional
+    public void removeUserRoleFromClient(UserDto userDto) {
+        String normalizedUsername = normalizeRequired(userDto.getUsername(), "Username obbligatorio");
+        String clientId = resolveRequestedClientId(userDto);
+        String roleId = userDto.getRoleId();
+        if (clientId == null || roleId == null) {
+            log.warn("[UserProvisioningService] ClientId o roleId mancanti per la rimozione ruolo da Keycloak: username={}, clientId={}, roleId={}", normalizedUsername, clientId, roleId);
+            return;
+        }
+
+        Keycloak keycloak = buildAdminClient();
+        try {
+            RealmResource realmResource = keycloak.realm(requiredRealm());
+            ClientRepresentation client = resolveClient(realmResource, clientId);
+            UserRepresentation user = findKeycloakUser(realmResource, normalizedUsername);
+            if (user == null) {
+                log.warn("[UserProvisioningService] Utente Keycloak non trovato per la rimozione ruolo: username={}", normalizedUsername);
+                return;
+            }
+            UserResource userResource = realmResource.users().get(user.getId());
+            List<RoleRepresentation> currentRoles = userResource.roles().clientLevel(client.getId()).listAll();
+            List<String> roleNamesToRemove = resolveRequestedClientRoleNames(roleId);
+            List<RoleRepresentation> rolesToRemove = currentRoles.stream()
+                .filter(r -> roleNamesToRemove.contains(normalizeRoleName(r.getName())))
+                .toList();
+            if (!rolesToRemove.isEmpty()) {
+                userResource.roles().clientLevel(client.getId()).remove(rolesToRemove);
+                log.info("[UserProvisioningService] Ruoli {} rimossi dal client {} per utente {}", roleNamesToRemove, clientId, normalizedUsername);
+            } else {
+                log.info("[UserProvisioningService] Nessun ruolo da rimuovere per client {} e utente {}", clientId, normalizedUsername);
+            }
+        } finally {
+            keycloak.close();
+        }
+    }
+    
 }
