@@ -104,6 +104,65 @@ public class UserProvisioningService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void synchronizeExistingUserClientRoles(Long userId, String requestedClientId, List<String> roleIds) {
+        UserEntity userEntity = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente non trovato: " + userId));
+
+        String normalizedUsername = normalizeRequired(userEntity.getUsername(), "Username utente mancante");
+        String normalizedClientId = normalizeRequired(requestedClientId, "Client Keycloak mancante");
+        List<String> requestedClientRoleNames = resolveRequestedClientRoleNames(roleIds);
+
+        log.info("[UserProvisioningService] Avvio synchronizeExistingUserClientRoles: userId={}, username={}, requestedClientId={}, roleIds={}, resolvedClientRoleNames={}",
+            userId,
+            normalizedUsername,
+            normalizedClientId,
+            Optional.ofNullable(roleIds).orElse(List.of()),
+            requestedClientRoleNames);
+
+        Keycloak keycloak = buildAdminClient();
+        try {
+            RealmResource realmResource = keycloak.realm(requiredRealm());
+            ClientRepresentation requestedClient = resolveClient(realmResource, normalizedClientId);
+            UserRepresentation existingUser = findKeycloakUser(realmResource, normalizedUsername);
+            if (existingUser == null) {
+            log.error("[UserProvisioningService] Utente Keycloak non trovato durante la sincronizzazione: userId={}, username={}, clientId={}",
+                userId,
+                normalizedUsername,
+                normalizedClientId);
+                throw new ResponseStatusException(NOT_FOUND, "Utente Keycloak non trovato: " + normalizedUsername);
+            }
+
+            log.info("[UserProvisioningService] Risorse Keycloak risolte: realm={}, clientId={}, clientUuid={}, keycloakUserId={}, keycloakUsername={}, enabled={}",
+                requiredRealm(),
+                requestedClient != null ? requestedClient.getClientId() : null,
+                requestedClient != null ? requestedClient.getId() : null,
+                existingUser.getId(),
+                existingUser.getUsername(),
+                existingUser.isEnabled());
+
+            UserResource userResource = realmResource.users().get(existingUser.getId());
+            synchronizeClientAssociation(userResource, normalizedClientId);
+            synchronizeClientRoleAssociation(userResource, requestedClient, requestedClientRoleNames);
+            log.info("[UserProvisioningService] Sincronizzazione Keycloak completata: userId={}, username={}, clientId={}",
+                userId,
+                normalizedUsername,
+                normalizedClientId);
+        } catch (Exception exception) {
+            log.error("[UserProvisioningService] Errore durante synchronizeExistingUserClientRoles: userId={}, username={}, requestedClientId={}, roleIds={}, resolvedClientRoleNames={}, details={}",
+                userId,
+                normalizedUsername,
+                normalizedClientId,
+                Optional.ofNullable(roleIds).orElse(List.of()),
+                requestedClientRoleNames,
+                summarizeExceptionChain(exception),
+                exception);
+            throw exception;
+        } finally {
+            keycloak.close();
+        }
+    }
+
     private String generatePassword() {
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[12];
@@ -112,12 +171,25 @@ public class UserProvisioningService {
     }
 
     private Keycloak buildAdminClient() {
+        String serverUrl = normalizeRequired(keycloakProperties.getServerUrl(), "Server URL Keycloak mancante");
+        String realm = requiredRealm();
+        String adminGrantType = normalizeRequired(keycloakProperties.getAdminGrantType(), "Grant type admin Keycloak mancante");
+        String adminClientId = normalizeRequired(keycloakProperties.getAdminClientId(), "Admin clientId Keycloak mancante");
+        String adminClientSecret = normalizeRequired(keycloakProperties.getAdminClientSecret(), "Admin clientSecret Keycloak mancante");
+
+        log.info("[UserProvisioningService] Creazione admin client Keycloak: serverUrl={}, realm={}, adminClientId={}, adminGrantType={}, adminClientSecretMasked={}",
+            serverUrl,
+            realm,
+            adminClientId,
+            adminGrantType,
+            maskSecret(adminClientSecret));
+
         return KeycloakBuilder.builder()
-                .serverUrl(normalizeRequired(keycloakProperties.getServerUrl(), "Server URL Keycloak mancante"))
-                .realm(requiredRealm())
-                .grantType(normalizeRequired(keycloakProperties.getAdminGrantType(), "Grant type admin Keycloak mancante"))
-                .clientId(normalizeRequired(keycloakProperties.getAdminClientId(), "Admin clientId Keycloak mancante"))
-                .clientSecret(normalizeRequired(keycloakProperties.getAdminClientSecret(), "Admin clientSecret Keycloak mancante"))
+            .serverUrl(serverUrl)
+            .realm(realm)
+            .grantType(adminGrantType)
+            .clientId(adminClientId)
+            .clientSecret(adminClientSecret)
                 .build();
     }
 
@@ -139,7 +211,13 @@ public class UserProvisioningService {
             return null;
         }
 
-        return realmResource.clients().findByClientId(clientId).stream()
+        List<ClientRepresentation> matchingClients = realmResource.clients().findByClientId(clientId);
+        log.info("[UserProvisioningService] resolveClient: requestedClientId={}, matchesFound={}, matchedClientUuids={}",
+                clientId,
+                matchingClients.size(),
+                matchingClients.stream().map(ClientRepresentation::getId).filter(Objects::nonNull).toList());
+
+        return matchingClients.stream()
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Client Keycloak non trovato: " + clientId));
     }
@@ -166,10 +244,20 @@ public class UserProvisioningService {
     }
 
     private UserRepresentation findKeycloakUser(RealmResource realmResource, String username) {
+        List<UserRepresentation> searchByUsernameResults = realmResource.users().searchByUsername(username, true);
+        List<UserRepresentation> searchExactResults = realmResource.users().search(username, true);
+        List<UserRepresentation> searchPagedResults = realmResource.users().search(username, 0, 20);
+
+        log.info("[UserProvisioningService] findKeycloakUser: username={}, searchByUsernameCount={}, searchExactCount={}, searchPagedCount={}",
+            username,
+            searchByUsernameResults.size(),
+            searchExactResults.size(),
+            searchPagedResults.size());
+
         return Stream.of(
-                realmResource.users().searchByUsername(username, true).stream(),
-                realmResource.users().search(username, true).stream(),
-                realmResource.users().search(username, 0, 20).stream())
+            searchByUsernameResults.stream(),
+            searchExactResults.stream(),
+            searchPagedResults.stream())
             .flatMap(stream -> stream)
             .filter(Objects::nonNull)
             .filter(user -> user.getUsername() != null && user.getUsername().equalsIgnoreCase(username))
@@ -280,9 +368,17 @@ public class UserProvisioningService {
 
         UserRepresentation representation = userResource.toRepresentation();
         Map<String, List<String>> mergedAttributes = mergeClientAssociation(representation.getAttributes(), requestedClientId);
+        log.info("[UserProvisioningService] synchronizeClientAssociation: username={}, requestedClientId={}, currentAttributes={}, mergedAttributes={}",
+                representation.getUsername(),
+                requestedClientId,
+                representation.getAttributes(),
+                mergedAttributes);
         if (!Objects.equals(mergedAttributes, representation.getAttributes())) {
             representation.setAttributes(mergedAttributes);
             userResource.update(representation);
+            log.info("[UserProvisioningService] Attributi client aggiornati per username={} clientId={}",
+                    representation.getUsername(),
+                    requestedClientId);
         }
     }
 
@@ -410,22 +506,38 @@ public class UserProvisioningService {
             return List.of();
         }
 
-        RoleEntity requestedRole = findRoleById(normalizedRoleId);
+        Optional<RoleEntity> requestedRole = roleRepository.findById(normalizedRoleId);
+        if (requestedRole.isEmpty()) {
+            log.warn("[UserProvisioningService] Ruolo {} non trovato su DB centralizzato, uso fallback diretto per la risoluzione ruoli client", normalizedRoleId);
+            return List.of(normalizedRoleId);
+        }
+
         LinkedHashSet<String> candidateRoleNames = Stream.of(
-                    requestedRole.getId(),
-                    requestedRole.getName(),
-                    requestedRole.getDescription())
+                    requestedRole.get().getId(),
+                    requestedRole.get().getName(),
+                    requestedRole.get().getDescription())
                 .map(this::normalizeRoleName)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
         log.info("[UserProvisioningService] Role DB risolto: roleId={}, roleName={}, roleDescription={}, candidateClientRoleNames={}",
-                requestedRole.getId(),
-                requestedRole.getName(),
-                requestedRole.getDescription(),
+                requestedRole.get().getId(),
+                requestedRole.get().getName(),
+                requestedRole.get().getDescription(),
                 candidateRoleNames);
 
         return List.copyOf(candidateRoleNames);
+    }
+
+    private List<String> resolveRequestedClientRoleNames(List<String> roleIds) {
+        return Optional.ofNullable(roleIds)
+                .orElse(List.of())
+                .stream()
+                .map(this::resolveRequestedClientRoleNames)
+                .flatMap(List::stream)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private List<RoleRepresentation> findMatchingRoles(List<RoleRepresentation> availableRoles,
@@ -475,6 +587,26 @@ public class UserProvisioningService {
         }
 
         return roleName.trim();
+    }
+
+    private String maskSecret(String value) {
+        if (value == null || value.isBlank()) {
+            return "<empty>";
+        }
+        if (value.length() <= 4) {
+            return "****";
+        }
+        return value.substring(0, 2) + "***" + value.substring(value.length() - 2);
+    }
+
+    private String summarizeExceptionChain(Throwable throwable) {
+        List<String> parts = new ArrayList<>();
+        Throwable current = throwable;
+        while (current != null) {
+            parts.add(current.getClass().getSimpleName() + ": " + Objects.toString(current.getMessage(), "<no-message>"));
+            current = current.getCause();
+        }
+        return parts.toString();
     }
 
     private void applyPasswordWithoutRequiredChange(UserResource userResource, String generatedPassword) {

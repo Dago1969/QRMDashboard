@@ -30,11 +30,21 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final TenantAppPointerRepository tenantAppPointerRepository;
     private final ProjectMapper projectMapper;
+    private final ProjectAdministratorAssignmentService projectAdministratorAssignmentService;
 
     @Transactional
     public ProjectDto create(ProjectDto projectDto) {
         log.info("Avvio creazione project centralizzato: code={}, tenant={}, tenantId={}",
             projectDto.getCode(), projectDto.getTenant(), projectDto.getTenantId());
+        log.info("[ProjectService] Amministratori ricevuti in create: {}",
+            java.util.Optional.ofNullable(projectDto.getAdministrators()).orElse(java.util.List.of()).stream()
+                .map(administrator -> administrator == null
+                    ? "null"
+                    : "{userId=" + administrator.getUserId()
+                    + ", roleId=" + administrator.getRoleId()
+                    + ", username=" + administrator.getUsername()
+                    + ", email=" + administrator.getEmail() + "}")
+                .toList());
         log.debug("[ProjectService] ProjectDto ricevuto: {}", projectDto);
         String normalizedCode = normalizeRequired(projectDto.getCode(), "Il codice progetto e obbligatorio");
         TenantAppPointerEntity tenant = resolveTenant(projectDto);
@@ -44,10 +54,17 @@ public class ProjectService {
         entity.setCode(normalizedCode);
         entity.setTenant(tenant);
         entity.setDescrizione(projectDto.getDescrizione());
+        entity.setLogo(normalizeOptional(projectDto.getLogo()));
+        entity.setFooter(normalizeOptional(projectDto.getFooter()));
+        entity.setEmailSender(normalizeOptional(projectDto.getEmailSender()));
         entity.setDataInizio(projectDto.getDataInizio());
         entity.setDataFine(projectDto.getDataFine());
+        entity.setAdministrators(projectDto.getAdministrators());
+        entity.setRoleIds(defaultList(projectDto.getRoleIds()));
+        entity.setEnabledModuleCodes(defaultList(projectDto.getEnabledModuleCodes()));
         log.debug("[ProjectService] Entity da salvare: {}", entity);
         ProjectEntity savedProject = projectRepository.save(entity);
+        projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
         log.info("Project centralizzato creato: id={}, code={}, tenantId={}",
             savedProject.getId(), savedProject.getCode(), tenant.getId());
         return projectMapper.toDto(savedProject);
@@ -79,6 +96,15 @@ public class ProjectService {
     public ProjectDto update(Long id, ProjectDto projectDto) {
         log.info("Avvio aggiornamento project centralizzato: id={}, code={}, tenant={}, tenantId={}",
                 id, projectDto.getCode(), projectDto.getTenant(), projectDto.getTenantId());
+        log.info("[ProjectService] Amministratori ricevuti in update: {}",
+            java.util.Optional.ofNullable(projectDto.getAdministrators()).orElse(java.util.List.of()).stream()
+                .map(administrator -> administrator == null
+                    ? "null"
+                    : "{userId=" + administrator.getUserId()
+                    + ", roleId=" + administrator.getRoleId()
+                    + ", username=" + administrator.getUsername()
+                    + ", email=" + administrator.getEmail() + "}")
+                .toList());
         ProjectEntity entity = findEntityById(id);
         String normalizedCode = normalizeRequired(projectDto.getCode(), "Il codice progetto e obbligatorio");
         TenantAppPointerEntity tenant = resolveTenant(projectDto);
@@ -87,9 +113,16 @@ public class ProjectService {
         entity.setCode(normalizedCode);
         entity.setTenant(tenant);
         entity.setDescrizione(projectDto.getDescrizione());
+        entity.setLogo(normalizeOptional(projectDto.getLogo()));
+        entity.setFooter(normalizeOptional(projectDto.getFooter()));
+        entity.setEmailSender(normalizeOptional(projectDto.getEmailSender()));
         entity.setDataInizio(projectDto.getDataInizio());
         entity.setDataFine(projectDto.getDataFine());
+        entity.setAdministrators(projectDto.getAdministrators());
+        entity.setRoleIds(defaultList(projectDto.getRoleIds()));
+        entity.setEnabledModuleCodes(defaultList(projectDto.getEnabledModuleCodes()));
         ProjectEntity savedProject = projectRepository.save(entity);
+        projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
         log.info("Project centralizzato aggiornato: id={}, code={}, tenantId={}",
                 savedProject.getId(), savedProject.getCode(), tenant.getId());
         return projectMapper.toDto(savedProject);
@@ -175,5 +208,9 @@ public class ProjectService {
     private String normalizeFilter(String value) {
         String normalized = normalizeOptional(value);
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private List<String> defaultList(List<String> values) {
+        return values == null ? List.of() : values;
     }
 }
