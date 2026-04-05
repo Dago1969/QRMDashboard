@@ -16,9 +16,16 @@ public class ProjectMapper {
         dto.setCode(entity.getCode());
         dto.setTenantId(entity.getTenant().getId());
         dto.setTenant(entity.getTenant().getClientName());
+        dto.setClientCode(entity.getTenant().getClientCode());
         dto.setDescrizione(entity.getDescrizione());
+        dto.setLogo(entity.getLogo());
+        dto.setFooter(entity.getFooter());
+        dto.setEmailSender(entity.getEmailSender());
         dto.setDataInizio(entity.getDataInizio());
         dto.setDataFine(entity.getDataFine());
+        dto.setAdministrators(entity.getAdministrators());
+        dto.setRoleIds(entity.getRoleIds());
+        dto.setEnabledModuleCodes(entity.getEnabledModuleCodes());
         // Log di mapping DTO
         org.slf4j.LoggerFactory.getLogger(ProjectMapper.class).debug("[ProjectMapper] toDto: entity={}, dto={}", entity, dto);
         return dto;
@@ -30,8 +37,14 @@ public class ProjectMapper {
         entity.setCode(dto.getCode());
         // tenant va gestito dal service
         entity.setDescrizione(dto.getDescrizione());
+        entity.setLogo(dto.getLogo());
+        entity.setFooter(dto.getFooter());
+        entity.setEmailSender(dto.getEmailSender());
         entity.setDataInizio(dto.getDataInizio());
         entity.setDataFine(dto.getDataFine());
+        entity.setAdministrators(dto.getAdministrators());
+        entity.setRoleIds(dto.getRoleIds());
+        entity.setEnabledModuleCodes(dto.getEnabledModuleCodes());
         org.slf4j.LoggerFactory.getLogger(ProjectMapper.class).debug("[ProjectMapper] toEntity: dto={}, entity={}", dto, entity);
         return entity;
     }

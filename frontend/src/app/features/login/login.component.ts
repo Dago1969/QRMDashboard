@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { NgIf } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -11,7 +11,7 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, NgIf],
+  imports: [ReactiveFormsModule, NgIf, RouterModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })

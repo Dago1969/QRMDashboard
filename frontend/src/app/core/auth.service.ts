@@ -11,12 +11,27 @@ interface LoginResponse {
   refreshExpiresIn: number;
 }
 
-interface DashboardResponse {
+export interface DashboardResponse {
   message: string;
   username: string;
-  subject: string;
+  subject?: string;
   clientRoles: Record<string, string[]>;
-  decodedClaims: Record<string, unknown>;
+  decodedClaims?: Record<string, unknown>;
+  userProjects: DashboardUserProject[];
+}
+
+export interface DashboardUserProject {
+  userId: number;
+  username: string;
+  tenantId: number;
+  tenantCode?: string;
+  tenantName?: string;
+  projectId?: number;
+  projectCode?: string;
+  projectDescription?: string;
+  superuser: boolean;
+  email?: string;
+  roleId?: string;
 }
 
 interface TenantResolutionResponse {
