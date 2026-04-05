@@ -1,6 +1,7 @@
 package com.qtm.dashboard.project.service;
 
 import com.qtm.commonlib.dto.ProjectAdministratorDto;
+import com.qtm.commonlib.dto.UserRoleProjectDto;
 import com.qtm.dashboard.project.entity.ProjectEntity;
 import com.qtm.dashboard.user.entity.RoleEntity;
 import com.qtm.dashboard.user.entity.UserRoleProjectEntity;
@@ -8,6 +9,8 @@ import com.qtm.dashboard.user.entity.UserRoleProjectId;
 import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRoleProjectRepository;
 import com.qtm.dashboard.user.service.UserProvisioningService;
+import com.qtm.dashboard.user.service.UserRoleProjectService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,12 +20,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Sincronizza gli amministratori del progetto con la tabella user_role_project e con i ruoli client di Keycloak.
@@ -32,10 +33,11 @@ import java.util.regex.Pattern;
 @Slf4j
 public class ProjectAdministratorAssignmentService {
 
-    private static final Pattern ADMIN_WORD_PATTERN = Pattern.compile("(^|\\W)admin(\\W|$)");
+    private static final Set<String> PROJECT_ADMIN_ROLE_IDS = Set.of("ADMIN_QTM", "SUPER_ADMIN");
 
     private final RoleRepository roleRepository;
     private final UserRoleProjectRepository userRoleProjectRepository;
+    private final UserRoleProjectService userRoleProjectService;
     private final UserProvisioningService userProvisioningService;
 
     @Transactional
@@ -106,8 +108,9 @@ public class ProjectAdministratorAssignmentService {
             projectId,
             assignmentsToInsert.stream().map(this::describeAssignment).toList());
         assignmentsToInsert.stream()
-            .map(this::toEntity)
-            .forEach(userRoleProjectRepository::save);
+            .map(this::toDto)
+            .forEach(userRoleProjectService::save);
+        
         if (!assignmentsToInsert.isEmpty()) {
             log.info("[ProjectAdministratorAssignmentService] Persistite {} nuove righe user_role_project per projectId={}",
                 assignmentsToInsert.size(),
@@ -192,8 +195,7 @@ public class ProjectAdministratorAssignmentService {
     }
 
     private boolean isProjectAdministratorRole(RoleEntity role) {
-        String normalized = StreamSupport.joinRoleFields(role);
-        return normalized.contains("admin qtm") || ADMIN_WORD_PATTERN.matcher(normalized).find();
+        return role != null && isExplicitProjectAdministratorRoleId(role.getId());
     }
 
     private String resolveAdministratorRoleId(ProjectAdministratorDto administrator,
@@ -238,8 +240,16 @@ public class ProjectAdministratorAssignmentService {
             return isProjectAdministratorRole(roleEntity);
         }
 
-        String normalizedComparisonRoleId = normalizedRoleId.toLowerCase(Locale.ROOT);
-        return normalizedComparisonRoleId.contains("admin qtm") || ADMIN_WORD_PATTERN.matcher(normalizedComparisonRoleId).find();
+        return isExplicitProjectAdministratorRoleId(normalizedRoleId);
+    }
+
+    private boolean isExplicitProjectAdministratorRoleId(String roleId) {
+        String normalizedRoleId = normalize(roleId);
+        if (normalizedRoleId == null) {
+            return false;
+        }
+
+        return PROJECT_ADMIN_ROLE_IDS.stream().anyMatch(allowedRoleId -> allowedRoleId.equalsIgnoreCase(normalizedRoleId));
     }
 
     private String describeAssignment(UserRoleProjectId assignmentId) {
@@ -267,24 +277,20 @@ public class ProjectAdministratorAssignmentService {
         return entity;
     }
 
+    private UserRoleProjectDto toDto(UserRoleProjectId id) {
+        UserRoleProjectDto dto = new UserRoleProjectDto();
+        dto.setUserId(id.getUserId());
+        dto.setTenantId(id.getTenantId());
+        dto.setRoleId(id.getRoleId());
+        dto.setProjectId(id.getProjectId());
+        return dto;
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return null;
         }
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
-    }
-
-    private static final class StreamSupport {
-        private StreamSupport() {
-        }
-
-        private static String joinRoleFields(RoleEntity role) {
-            return java.util.stream.Stream.of(role.getId(), role.getName(), role.getDescription())
-                    .filter(Objects::nonNull)
-                    .map(value -> value.toLowerCase(Locale.ROOT))
-                    .reduce("", (left, right) -> left + " " + right)
-                    .trim();
-        }
     }
 }

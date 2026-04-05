@@ -21,6 +21,7 @@ import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -104,7 +105,7 @@ public class UserProvisioningService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void synchronizeExistingUserClientRoles(Long userId, String requestedClientId, List<String> roleIds) {
         UserEntity userEntity = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente non trovato: " + userId));
@@ -126,10 +127,10 @@ public class UserProvisioningService {
             ClientRepresentation requestedClient = resolveClient(realmResource, normalizedClientId);
             UserRepresentation existingUser = findKeycloakUser(realmResource, normalizedUsername);
             if (existingUser == null) {
-            log.error("[UserProvisioningService] Utente Keycloak non trovato durante la sincronizzazione: userId={}, username={}, clientId={}",
-                userId,
-                normalizedUsername,
-                normalizedClientId);
+                log.error("[UserProvisioningService] Utente Keycloak non trovato durante la sincronizzazione: userId={}, username={}, clientId={}",
+                    userId,
+                    normalizedUsername,
+                    normalizedClientId);
                 throw new ResponseStatusException(NOT_FOUND, "Utente Keycloak non trovato: " + normalizedUsername);
             }
 
@@ -190,7 +191,7 @@ public class UserProvisioningService {
             .grantType(adminGrantType)
             .clientId(adminClientId)
             .clientSecret(adminClientSecret)
-                .build();
+            .build();
     }
 
     private String requiredRealm() {
