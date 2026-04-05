@@ -14,9 +14,9 @@ interface LoginResponse {
 export interface DashboardResponse {
   message: string;
   username: string;
-  subject: string;
+  subject?: string;
   clientRoles: Record<string, string[]>;
-  decodedClaims: Record<string, unknown>;
+  decodedClaims?: Record<string, unknown>;
   userProjects: DashboardUserProject[];
 }
 

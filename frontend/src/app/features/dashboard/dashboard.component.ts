@@ -22,6 +22,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   message = '';
   username = '';
   subject = '';
+  decodedClaims: Record<string, unknown> | null = null;
+  decodedClaimsJson = '';
   userProjects: DashboardUserProject[] = [];
   groupedProjects: Array<{ tenantCode: string, tenantName: string, projects: DashboardUserProject[] }> = [];
   errorMessage = '';
@@ -51,7 +53,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (response: DashboardResponse) => {
         this.showSuccessMessage(response.message);
         this.username = response.username;
-        this.subject = response.subject;
+        this.applyJwtDebugInfo(response);
         this.userProjects = Array.isArray(response.userProjects) ? response.userProjects : [];
 
         // Raggruppa per tenantCode e tenantName
@@ -253,6 +255,65 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     return targetUrl;
+  }
+
+  /**
+   * Ripristina la sezione debug JWT usando i dati backend se presenti, altrimenti decodifica il token locale.
+   */
+  private applyJwtDebugInfo(response: DashboardResponse): void {
+    const backendClaims = this.normalizeClaims(response.decodedClaims);
+    const tokenClaims = this.decodeClaimsFromCurrentToken();
+    const effectiveClaims = backendClaims ?? tokenClaims;
+
+    this.decodedClaims = effectiveClaims;
+    this.decodedClaimsJson = effectiveClaims ? JSON.stringify(effectiveClaims, null, 2) : '';
+    this.subject = typeof response.subject === 'string' && response.subject.trim() !== ''
+      ? response.subject
+      : this.extractSubject(effectiveClaims);
+  }
+
+  private decodeClaimsFromCurrentToken(): Record<string, unknown> | null {
+    const token = this.authService.getToken();
+    if (!token) {
+      return null;
+    }
+
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      return null;
+    }
+
+    try {
+      const payload = this.decodeBase64Url(parts[1]);
+      const parsed = JSON.parse(payload) as unknown;
+      return this.normalizeClaims(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  private normalizeClaims(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    return value as Record<string, unknown>;
+  }
+
+  private extractSubject(claims: Record<string, unknown> | null): string {
+    if (!claims) {
+      return '';
+    }
+
+    const subjectClaim = claims['sub'];
+    return typeof subjectClaim === 'string' ? subjectClaim : '';
+  }
+
+  private decodeBase64Url(value: string): string {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const paddingLength = (4 - (base64.length % 4)) % 4;
+    const padded = base64 + '='.repeat(paddingLength);
+    return atob(padded);
   }
 
   private groupProjectsByClient(userProjects: DashboardUserProject[]): Map<string, DashboardUserProject[]> {

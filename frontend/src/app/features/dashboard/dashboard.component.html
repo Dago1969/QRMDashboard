@@ -16,6 +16,7 @@
       <strong>{{ t('dashboard.label.message') }}</strong> {{ message }}
     </p>
     <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
+    <p *ngIf="subject"><strong>{{ t('dashboard.label.subject') }}</strong> {{ subject }}</p>
 
 
     <div *ngIf="groupedProjects.length > 0">
@@ -40,6 +41,11 @@
     </div>
 
     <p *ngIf="userProjects.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
+
+    <div *ngIf="decodedClaimsJson" class="jwt-debug">
+      <strong>{{ t('dashboard.jwtDecodedClaims') }}</strong>
+      <pre>{{ decodedClaimsJson }}</pre>
+    </div>
 
     <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
       <div class="feedback-banner-content">

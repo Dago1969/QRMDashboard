@@ -125,3 +125,9 @@ h2 {
   overflow: auto;
   white-space: pre-wrap;
 }
+
+.jwt-debug pre {
+  margin: 10px 0 0;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.9rem;
+}
