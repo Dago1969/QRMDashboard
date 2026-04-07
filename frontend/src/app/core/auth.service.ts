@@ -3,6 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
+export interface TenantInfo {
+  id: number;
+  clientCode: string;
+  clientName: string;
+  enabled: boolean;
+  tenantAppUrl: string;
+}
+
 interface LoginResponse {
   accessToken: string;
   refreshToken: string;
@@ -47,6 +55,10 @@ export class AuthService {
   private readonly tokenStorageKey = 'qtm_access_token';
 
   constructor(private readonly http: HttpClient) {}
+
+  getAllTenants(): Observable<TenantInfo[]> {
+    return this.http.get<TenantInfo[]>(`${environment.apiBaseUrl}/tenant-app-pointers`);
+  }
 
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http

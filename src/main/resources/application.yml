@@ -11,13 +11,12 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:dago}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
-    defer-datasource-initialization: true
-    hibernate:
-      ddl-auto: update
     open-in-view: false
     properties:
       hibernate:
         '[format_sql]': true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
   security:
     oauth2:
       resourceserver:

@@ -21,6 +21,10 @@ public class UserMapper {
         dto.setEmail(entity.getEmail());
         // Mappa il campo passwordHash della entity nel campo password del DTO (solo per provisioning o uso tecnico)
         dto.setPassword(entity.getPasswordHash());
+        dto.setTelefono(entity.getTelefono());
+        dto.setCodiceFiscale(entity.getCodiceFiscale());
+        dto.setDataFineValiditaPassword(entity.getDataFineValiditaPassword());
+        dto.setCanaleOtp(entity.getCanaleOtp());
         return dto;
     }
 
@@ -33,6 +37,10 @@ public class UserMapper {
         entity.setEmail(dto.getEmail());
         // Mappa il campo password del DTO nel campo passwordHash della entity (solo per provisioning o uso tecnico)
         entity.setPasswordHash(dto.getPassword());
+        entity.setTelefono(dto.getTelefono());
+        entity.setCodiceFiscale(dto.getCodiceFiscale());
+        entity.setDataFineValiditaPassword(dto.getDataFineValiditaPassword());
+        entity.setCanaleOtp(dto.getCanaleOtp());
         return entity;
     }
 }

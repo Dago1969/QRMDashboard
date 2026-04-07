@@ -51,4 +51,28 @@ public class UserEntity {
      */
     @Column(name = "password_hash")
     private String passwordHash;
+
+    /**
+     * Numero di telefono dell'utente.
+     */
+    @Column(name = "telefono")
+    private String telefono;
+
+    /**
+     * Codice fiscale dell'utente.
+     */
+    @Column(name = "codice_fiscale")
+    private String codiceFiscale;
+
+    /**
+     * Data fine validità password.
+     */
+    @Column(name = "data_fine_validita_password")
+    private java.time.LocalDate dataFineValiditaPassword;
+
+    /**
+     * Canale OTP preferito.
+     */
+    @Column(name = "canale_otp")
+    private String canaleOtp;
 }
