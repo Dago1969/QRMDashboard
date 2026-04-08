@@ -16,6 +16,13 @@ Progetto completo con:
 - Client: `postman-client`
 - Grant type: `password`
 
+Per il provisioning utenti da backend serve anche una configurazione admin Keycloak. Sono supportate due modalita:
+
+- `APP_KEYCLOAK_ADMIN_CLIENT_ID` + `APP_KEYCLOAK_ADMIN_CLIENT_SECRET` per `client_credentials`
+- `APP_KEYCLOAK_ADMIN_USERNAME` + `APP_KEYCLOAK_ADMIN_PASSWORD` come fallback, opzionalmente con `APP_KEYCLOAK_ADMIN_USER_REALM` (default `master`)
+
+Per l'avvio locale vengono accettate anche le variabili standard di Keycloak `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` e `KC_BOOTSTRAP_ADMIN_USERNAME` / `KC_BOOTSTRAP_ADMIN_PASSWORD`, usate automaticamente come fallback per il provisioning admin su `admin-cli`.
+
 Le proprietà sono già valorizzate in `src/main/resources/application.yml`.
 
 ### MySQL

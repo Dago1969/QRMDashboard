@@ -91,8 +91,10 @@ public class UserProvisioningService {
                     requestedClientRoleNames);
 
             log.info("[UserProvisioningService] Password generata per username={}: {}", normalizedUsername, generatedPassword);
-            applyPasswordWithoutRequiredChange(keycloakUserResource, generatedPassword);
+            applyPassword(keycloakUserResource, generatedPassword, userDto.isTemporaryPassword());
+            if (!userDto.isTemporaryPassword() && userDto.isEnabled()) {
                 verifyKeycloakLogin(normalizedUsername, generatedPassword);
+            }
 
                 UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
 
@@ -173,25 +175,80 @@ public class UserProvisioningService {
 
     private Keycloak buildAdminClient() {
         String serverUrl = normalizeRequired(keycloakProperties.getServerUrl(), "Server URL Keycloak mancante");
-        String realm = requiredRealm();
-        String adminGrantType = normalizeRequired(keycloakProperties.getAdminGrantType(), "Grant type admin Keycloak mancante");
-        String adminClientId = normalizeRequired(keycloakProperties.getAdminClientId(), "Admin clientId Keycloak mancante");
-        String adminClientSecret = normalizeRequired(keycloakProperties.getAdminClientSecret(), "Admin clientSecret Keycloak mancante");
+        String configuredGrantType = normalizeNullable(keycloakProperties.getAdminGrantType());
+        String adminClientId = normalizeNullable(keycloakProperties.getAdminClientId());
+        String adminClientSecret = normalizeNullable(keycloakProperties.getAdminClientSecret());
+        String adminUsername = normalizeNullable(keycloakProperties.getAdminUsername());
+        String adminPassword = normalizeNullable(keycloakProperties.getAdminPassword());
+        String adminUserRealm = normalizeNullable(keycloakProperties.getAdminUserRealm());
 
-        log.info("[UserProvisioningService] Creazione admin client Keycloak: serverUrl={}, realm={}, adminClientId={}, adminGrantType={}, adminClientSecretMasked={}",
-            serverUrl,
-            realm,
-            adminClientId,
-            adminGrantType,
-            maskSecret(adminClientSecret));
+        if (configuredGrantType == null) {
+            configuredGrantType = adminClientSecret != null ? "client_credentials" : (adminUsername != null && adminPassword != null ? "password" : null);
+        }
 
-        return KeycloakBuilder.builder()
-            .serverUrl(serverUrl)
-            .realm(realm)
-            .grantType(adminGrantType)
-            .clientId(adminClientId)
-            .clientSecret(adminClientSecret)
-            .build();
+        if (configuredGrantType == null) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Configurazione admin Keycloak mancante: valorizza APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET oppure APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD");
+        }
+
+        Keycloak keycloak;
+        if ("client_credentials".equalsIgnoreCase(configuredGrantType)) {
+            String resolvedAdminClientId = normalizeRequired(adminClientId, "Admin clientId Keycloak mancante");
+            String resolvedAdminClientSecret = normalizeRequired(adminClientSecret, "Admin clientSecret Keycloak mancante");
+            String realm = requiredRealm();
+
+            log.info("[UserProvisioningService] Creazione admin client Keycloak: mode=client_credentials, serverUrl={}, realm={}, adminClientId={}, adminClientSecretMasked={}",
+                serverUrl,
+                realm,
+                resolvedAdminClientId,
+                maskSecret(resolvedAdminClientSecret));
+
+            keycloak = KeycloakBuilder.builder()
+                .serverUrl(serverUrl)
+                .realm(realm)
+                .grantType("client_credentials")
+                .clientId(resolvedAdminClientId)
+                .clientSecret(resolvedAdminClientSecret)
+                .build();
+        } else if ("password".equalsIgnoreCase(configuredGrantType)) {
+            String resolvedAdminClientId = adminClientId != null ? adminClientId : "admin-cli";
+            String resolvedAdminUsername = normalizeRequired(adminUsername, "Admin username Keycloak mancante");
+            String resolvedAdminPassword = normalizeRequired(adminPassword, "Admin password Keycloak mancante");
+            String realm = adminUserRealm != null ? adminUserRealm : "master";
+
+            log.info("[UserProvisioningService] Creazione admin client Keycloak: mode=password, serverUrl={}, realm={}, adminClientId={}, adminUsername={}",
+                serverUrl,
+                realm,
+                resolvedAdminClientId,
+                resolvedAdminUsername);
+
+            KeycloakBuilder builder = KeycloakBuilder.builder()
+                .serverUrl(serverUrl)
+                .realm(realm)
+                .grantType("password")
+                .clientId(resolvedAdminClientId)
+                .username(resolvedAdminUsername)
+                .password(resolvedAdminPassword);
+
+            if (adminClientSecret != null) {
+                builder.clientSecret(adminClientSecret);
+            }
+
+            keycloak = builder.build();
+        } else {
+            throw new ResponseStatusException(BAD_REQUEST, "Grant type admin Keycloak non supportato: " + configuredGrantType);
+        }
+
+        try {
+            keycloak.tokenManager().getAccessTokenString();
+            return keycloak;
+        } catch (Exception exception) {
+            keycloak.close();
+            throw new ResponseStatusException(
+                    UNAUTHORIZED,
+                    "Autenticazione admin Keycloak fallita: verifica APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET oppure configura APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD",
+                    exception);
+        }
     }
 
     private String requiredRealm() {
@@ -610,14 +667,38 @@ public class UserProvisioningService {
         return parts.toString();
     }
 
-    private void applyPasswordWithoutRequiredChange(UserResource userResource, String generatedPassword) {
+    private void applyPassword(UserResource userResource, String generatedPassword, boolean temporaryPassword) {
         CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
         credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
         credentialRepresentation.setValue(generatedPassword);
-        credentialRepresentation.setTemporary(false);
+        credentialRepresentation.setTemporary(temporaryPassword);
         userResource.resetPassword(credentialRepresentation);
 
+        if (temporaryPassword) {
+            requirePasswordUpdate(userResource);
+            return;
+        }
+
         sanitizeUserForDirectGrant(userResource);
+    }
+
+    /**
+     * Mantiene l'azione richiesta di cambio password al primo accesso, preservando i metadati utente necessari.
+     */
+    private void requirePasswordUpdate(UserResource userResource) {
+        UserRepresentation representation = userResource.toRepresentation();
+        boolean changed = synchronizeUserMetadata(representation);
+
+        List<String> requiredActions = new ArrayList<>(Optional.ofNullable(representation.getRequiredActions()).orElse(List.of()));
+        if (!requiredActions.contains("UPDATE_PASSWORD")) {
+            requiredActions.add("UPDATE_PASSWORD");
+            representation.setRequiredActions(requiredActions);
+            changed = true;
+        }
+
+        if (changed) {
+            userResource.update(representation);
+        }
     }
 
     /**
@@ -635,6 +716,16 @@ public class UserProvisioningService {
             representation.setRequiredActions(requiredActions);
             changed = true;
         }
+
+        changed = synchronizeUserMetadata(representation) || changed;
+
+        if (changed) {
+            userResource.update(representation);
+        }
+    }
+
+    private boolean synchronizeUserMetadata(UserRepresentation representation) {
+        boolean changed = false;
 
         boolean shouldVerifyEmail = normalizeNullable(representation.getEmail()) != null;
         if (shouldVerifyEmail && !Boolean.TRUE.equals(representation.isEmailVerified())) {
@@ -656,9 +747,7 @@ public class UserProvisioningService {
             changed = true;
         }
 
-        if (changed) {
-            userResource.update(representation);
-        }
+        return changed;
     }
 
     String resolveKeycloakFirstName(String username, String email) {

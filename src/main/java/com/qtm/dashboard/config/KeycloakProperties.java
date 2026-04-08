@@ -17,6 +17,9 @@ public class KeycloakProperties {
     private String adminClientId;
     private String adminClientSecret;
     private String adminGrantType;
+    private String adminUsername;
+    private String adminPassword;
+    private String adminUserRealm;
     private String clientAssociationAttribute;
 
     public String getServerUrl() {
@@ -89,6 +92,30 @@ public class KeycloakProperties {
 
     public void setAdminGrantType(String adminGrantType) {
         this.adminGrantType = adminGrantType;
+    }
+
+    public String getAdminUsername() {
+        return adminUsername;
+    }
+
+    public void setAdminUsername(String adminUsername) {
+        this.adminUsername = adminUsername;
+    }
+
+    public String getAdminPassword() {
+        return adminPassword;
+    }
+
+    public void setAdminPassword(String adminPassword) {
+        this.adminPassword = adminPassword;
+    }
+
+    public String getAdminUserRealm() {
+        return adminUserRealm;
+    }
+
+    public void setAdminUserRealm(String adminUserRealm) {
+        this.adminUserRealm = adminUserRealm;
     }
 
     public String getClientAssociationAttribute() {

@@ -14,6 +14,36 @@
       "name": "app.keycloak.grant-type",
       "type": "java.lang.String",
       "description": "Grant type usato per login verso Keycloak."
+    },
+    {
+      "name": "app.keycloak.admin-client-id",
+      "type": "java.lang.String",
+      "description": "Client ID usato per il provisioning amministrativo su Keycloak."
+    },
+    {
+      "name": "app.keycloak.admin-client-secret",
+      "type": "java.lang.String",
+      "description": "Secret del client amministrativo Keycloak quando si usa client_credentials."
+    },
+    {
+      "name": "app.keycloak.admin-grant-type",
+      "type": "java.lang.String",
+      "description": "Grant type per il client amministrativo Keycloak. Se omesso viene scelto automaticamente in base alle credenziali disponibili."
+    },
+    {
+      "name": "app.keycloak.admin-username",
+      "type": "java.lang.String",
+      "description": "Username amministrativo Keycloak usato come fallback per il provisioning."
+    },
+    {
+      "name": "app.keycloak.admin-password",
+      "type": "java.lang.String",
+      "description": "Password dell'utente amministrativo Keycloak usata come fallback per il provisioning."
+    },
+    {
+      "name": "app.keycloak.admin-user-realm",
+      "type": "java.lang.String",
+      "description": "Realm dell'utente amministrativo usato per ottenere il token di provisioning."
     }
   ]
 }
