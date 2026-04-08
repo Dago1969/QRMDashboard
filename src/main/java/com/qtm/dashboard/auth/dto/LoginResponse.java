@@ -2,8 +2,20 @@ package com.qtm.dashboard.auth.dto;
 
 /**
  * DTO di output per la risposta token ottenuta da Keycloak.
+ * Esteso per supportare la segnalazione mustChangePassword.
  */
 public class LoginResponse {
+    /**
+     * Indica se l'utente deve cambiare la password al primo accesso.
+     */
+    private boolean mustChangePassword;
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
 
     private String accessToken;
     private String refreshToken;

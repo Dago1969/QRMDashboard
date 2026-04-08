@@ -1,11 +1,18 @@
 package com.qtm.dashboard.auth.service;
 
+import com.qtm.dashboard.auth.dto.ChangePasswordRequest;
 import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.dto.LoginResponse;
 import com.qtm.dashboard.config.KeycloakProperties;
 import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
+import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -14,6 +21,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -23,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 /**
@@ -31,6 +40,9 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 @Service
 @Slf4j
 public class KeycloakAuthService {
+
+    private static final String ROBUST_PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])\\S{12,}$";
+    private static final int PASSWORD_VALIDITY_MONTHS = 6;
 
     private final RestClient restClient;
     private final KeycloakProperties keycloakProperties;
@@ -56,6 +68,9 @@ public class KeycloakAuthService {
                 return response;
             } catch (ResponseStatusException ex) {
                 log.warn("[KeycloakAuthService] Login Keycloak fallito con identificativo={}", loginIdentifier);
+                if (requiresPasswordUpdate(loginIdentifier)) {
+                    return mustChangePasswordResponse();
+                }
                 lastFailure = ex;
             }
         }
@@ -65,6 +80,54 @@ public class KeycloakAuthService {
         }
 
         throw new ResponseStatusException(UNAUTHORIZED, "Credenziali non valide");
+    }
+
+    /**
+     * Cambia la password utente tramite Admin API Keycloak e rimuove l'action UPDATE_PASSWORD quando completata.
+     */
+    public void changePassword(ChangePasswordRequest request) {
+        String normalizedIdentifier = normalizeLoginIdentifier(request.getUsername());
+        String currentPassword = normalizeRequiredValue(request.getCurrentPassword(), "Password attuale obbligatoria");
+        String newPassword = normalizeRequiredValue(request.getNewPassword(), "Nuova password obbligatoria");
+        String confirmPassword = normalizeRequiredValue(request.getConfirmPassword(), "Conferma password obbligatoria");
+
+        if (!newPassword.equals(confirmPassword)) {
+            throw new ResponseStatusException(BAD_REQUEST, "Le nuove password non coincidono");
+        }
+
+        validateRobustPassword(newPassword);
+
+        UserEntity userEntity = resolveUserEntity(normalizedIdentifier)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente non trovato: " + normalizedIdentifier));
+
+        String canonicalUsername = normalizeLoginIdentifier(userEntity.getUsername());
+        validateCurrentPassword(canonicalUsername, currentPassword, userEntity);
+
+        Keycloak keycloak = buildAdminClient();
+        try {
+            RealmResource realmResource = keycloak.realm(requiredRealm());
+            UserRepresentation keycloakUser = findKeycloakUser(realmResource, canonicalUsername)
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente Keycloak non trovato: " + canonicalUsername));
+
+            UserResource userResource = realmResource.users().get(keycloakUser.getId());
+            CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
+            credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
+            credentialRepresentation.setValue(newPassword);
+            credentialRepresentation.setTemporary(false);
+            userResource.resetPassword(credentialRepresentation);
+
+            UserRepresentation representation = userResource.toRepresentation();
+            List<String> requiredActions = new ArrayList<>(Optional.ofNullable(representation.getRequiredActions()).orElse(List.of()));
+            requiredActions.removeIf(action -> "UPDATE_PASSWORD".equalsIgnoreCase(action));
+            representation.setRequiredActions(requiredActions);
+            userResource.update(representation);
+
+            userEntity.setPasswordHash(newPassword);
+            userEntity.setDataFineValiditaPassword(LocalDate.now().plusMonths(PASSWORD_VALIDITY_MONTHS));
+            userRepository.save(userEntity);
+        } finally {
+            keycloak.close();
+        }
     }
 
     List<String> resolveLoginIdentifiers(String rawLoginIdentifier) {
@@ -122,7 +185,163 @@ public class KeycloakAuthService {
 
             return mapToLoginResponse(keycloakResponse);
         } catch (HttpStatusCodeException ex) {
+            String responseBody = ex.getResponseBodyAsString();
+            log.error("[KeycloakAuthService] Errore Keycloak login: status={}, body={}", ex.getStatusCode(), responseBody);
             throw new ResponseStatusException(UNAUTHORIZED, "Credenziali non valide", ex);
+        }
+    }
+
+    private LoginResponse mustChangePasswordResponse() {
+        LoginResponse response = new LoginResponse();
+        response.setMustChangePassword(true);
+        return response;
+    }
+
+    private boolean requiresPasswordUpdate(String loginIdentifier) {
+        Keycloak keycloak = buildAdminClient();
+        try {
+            RealmResource realmResource = keycloak.realm(requiredRealm());
+            return resolveKeycloakUserForLoginIdentifier(realmResource, loginIdentifier)
+                    .map(UserRepresentation::getRequiredActions)
+                    .stream()
+                    .flatMap(List::stream)
+                    .anyMatch(action -> "UPDATE_PASSWORD".equalsIgnoreCase(action));
+        } finally {
+            keycloak.close();
+        }
+    }
+
+    private Optional<UserRepresentation> resolveKeycloakUserForLoginIdentifier(RealmResource realmResource, String loginIdentifier) {
+        Optional<UserEntity> userEntity = resolveUserEntity(loginIdentifier);
+        if (userEntity.isPresent()) {
+            return findKeycloakUser(realmResource, normalizeLoginIdentifier(userEntity.get().getUsername()));
+        }
+
+        return findKeycloakUser(realmResource, loginIdentifier);
+    }
+
+    private Optional<UserEntity> resolveUserEntity(String loginIdentifier) {
+        Optional<UserEntity> byUsername = userRepository.findByUsernameIgnoreCase(loginIdentifier);
+        if (byUsername.isPresent()) {
+            return byUsername;
+        }
+
+        return userRepository.findByEmailIgnoreCase(loginIdentifier);
+    }
+
+    private Optional<UserRepresentation> findKeycloakUser(RealmResource realmResource, String loginIdentifier) {
+        List<UserRepresentation> matches = new ArrayList<>();
+        matches.addAll(Optional.ofNullable(realmResource.users().searchByUsername(loginIdentifier, true)).orElse(List.of()));
+        matches.addAll(Optional.ofNullable(realmResource.users().search(loginIdentifier, true)).orElse(List.of()));
+
+        return matches.stream()
+                .filter(Objects::nonNull)
+                .filter(user -> equalsIgnoreCase(user.getUsername(), loginIdentifier) || equalsIgnoreCase(user.getEmail(), loginIdentifier))
+                .findFirst();
+    }
+
+    private void validateCurrentPassword(String canonicalUsername, String currentPassword, UserEntity userEntity) {
+        if (Objects.equals(userEntity.getPasswordHash(), currentPassword)) {
+            return;
+        }
+
+        try {
+            loginWithIdentifier(canonicalUsername, currentPassword);
+        } catch (ResponseStatusException exception) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Password attuale non valida", exception);
+        }
+    }
+
+    private Keycloak buildAdminClient() {
+        String serverUrl = normalizeRequiredValue(keycloakProperties.getServerUrl(), "Server URL Keycloak mancante");
+        String configuredGrantType = normalizeOptionalValue(keycloakProperties.getAdminGrantType());
+        String adminClientId = normalizeOptionalValue(keycloakProperties.getAdminClientId());
+        String adminClientSecret = normalizeOptionalValue(keycloakProperties.getAdminClientSecret());
+        String adminUsername = normalizeOptionalValue(keycloakProperties.getAdminUsername());
+        String adminPassword = normalizeOptionalValue(keycloakProperties.getAdminPassword());
+        String adminUserRealm = normalizeOptionalValue(keycloakProperties.getAdminUserRealm());
+
+        if (configuredGrantType == null) {
+            configuredGrantType = adminClientSecret != null ? "client_credentials" : (adminUsername != null && adminPassword != null ? "password" : null);
+        }
+
+        if (configuredGrantType == null) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Configurazione admin Keycloak mancante: valorizza APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET oppure APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD");
+        }
+
+        Keycloak keycloak;
+        if ("client_credentials".equalsIgnoreCase(configuredGrantType)) {
+            keycloak = KeycloakBuilder.builder()
+                    .serverUrl(serverUrl)
+                    .realm(requiredRealm())
+                    .grantType("client_credentials")
+                    .clientId(normalizeRequiredValue(adminClientId, "Admin clientId Keycloak mancante"))
+                    .clientSecret(normalizeRequiredValue(adminClientSecret, "Admin clientSecret Keycloak mancante"))
+                    .build();
+        } else if ("password".equalsIgnoreCase(configuredGrantType)) {
+            KeycloakBuilder builder = KeycloakBuilder.builder()
+                    .serverUrl(serverUrl)
+                    .realm(adminUserRealm != null ? adminUserRealm : "master")
+                    .grantType("password")
+                    .clientId(adminClientId != null ? adminClientId : "admin-cli")
+                    .username(normalizeRequiredValue(adminUsername, "Admin username Keycloak mancante"))
+                    .password(normalizeRequiredValue(adminPassword, "Admin password Keycloak mancante"));
+
+            if (adminClientSecret != null) {
+                builder.clientSecret(adminClientSecret);
+            }
+
+            keycloak = builder.build();
+        } else {
+            throw new ResponseStatusException(BAD_REQUEST, "Grant type admin Keycloak non supportato: " + configuredGrantType);
+        }
+
+        try {
+            keycloak.tokenManager().getAccessTokenString();
+            return keycloak;
+        } catch (Exception exception) {
+            keycloak.close();
+            throw new ResponseStatusException(UNAUTHORIZED,
+                    "Autenticazione admin Keycloak fallita: verifica la configurazione admin",
+                    exception);
+        }
+    }
+
+    private String requiredRealm() {
+        return normalizeRequiredValue(keycloakProperties.getRealm(), "Realm Keycloak mancante");
+    }
+
+    private String normalizeRequiredValue(String value, String message) {
+        String normalized = normalizeOptionalValue(value);
+        if (normalized == null) {
+            throw new ResponseStatusException(BAD_REQUEST, message);
+        }
+        return normalized;
+    }
+
+    private String normalizeOptionalValue(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private boolean equalsIgnoreCase(String left, String right) {
+        return left != null && right != null && left.equalsIgnoreCase(right);
+    }
+
+    private void validateRobustPassword(String newPassword) {
+        if (!newPassword.matches(ROBUST_PASSWORD_REGEX)) {
+            throw new ResponseStatusException(
+                    BAD_REQUEST,
+                    "La nuova password deve contenere almeno 12 caratteri, una lettera maiuscola, una minuscola, un numero e un carattere speciale, senza spazi");
+        }
+
+        if (newPassword.toLowerCase().contains("password")) {
+            throw new ResponseStatusException(BAD_REQUEST, "La nuova password non puo contenere parole banali come 'password'");
         }
     }
 

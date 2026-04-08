@@ -1,5 +1,6 @@
 package com.qtm.dashboard.auth.controller;
 
+import com.qtm.dashboard.auth.dto.ChangePasswordRequest;
 import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.dto.LoginResponse;
 import com.qtm.dashboard.auth.service.KeycloakAuthService;
@@ -31,6 +32,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(keycloakAuthService.login(request));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        keycloakAuthService.changePassword(request);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/register")

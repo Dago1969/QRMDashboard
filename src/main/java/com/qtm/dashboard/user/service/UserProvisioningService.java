@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -50,6 +51,8 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 @Service
 @RequiredArgsConstructor
 public class UserProvisioningService {
+
+    private static final int PASSWORD_VALIDITY_MONTHS = 6;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -90,11 +93,8 @@ public class UserProvisioningService {
                     requestedClient,
                     requestedClientRoleNames);
 
-            log.info("[UserProvisioningService] Password generata per username={}: {}", normalizedUsername, generatedPassword);
-            applyPassword(keycloakUserResource, generatedPassword, userDto.isTemporaryPassword());
-            if (!userDto.isTemporaryPassword() && userDto.isEnabled()) {
-                verifyKeycloakLogin(normalizedUsername, generatedPassword);
-            }
+            log.info("[UserProvisioningService] Password temporanea generata per username={}: {}", normalizedUsername, generatedPassword);
+            applyPassword(keycloakUserResource, generatedPassword);
 
                 UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
 
@@ -335,7 +335,7 @@ public class UserProvisioningService {
         representation.setFirstName(resolveKeycloakFirstName(normalizedUsername, normalizedEmail));
         representation.setLastName(resolveKeycloakLastName(normalizedUsername, normalizedEmail));
         representation.setEnabled(Boolean.TRUE.equals(userDto.isEnabled()) || userDto.isEnabled());
-        representation.setRequiredActions(new ArrayList<>());
+        representation.setRequiredActions(new ArrayList<>(List.of("UPDATE_PASSWORD")));
         representation.setAttributes(buildAssociationAttributes(requestedClientId));
 
         try (Response response = realmResource.users().create(representation)) {
@@ -667,19 +667,16 @@ public class UserProvisioningService {
         return parts.toString();
     }
 
-    private void applyPassword(UserResource userResource, String generatedPassword, boolean temporaryPassword) {
+    /**
+     * Imposta sempre una password temporanea e registra l'azione UPDATE_PASSWORD affinche' il primo accesso passi dal cambio password applicativo.
+     */
+    private void applyPassword(UserResource userResource, String generatedPassword) {
         CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
         credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
         credentialRepresentation.setValue(generatedPassword);
-        credentialRepresentation.setTemporary(temporaryPassword);
+        credentialRepresentation.setTemporary(true);
         userResource.resetPassword(credentialRepresentation);
-
-        if (temporaryPassword) {
-            requirePasswordUpdate(userResource);
-            return;
-        }
-
-        sanitizeUserForDirectGrant(userResource);
+        requirePasswordUpdate(userResource);
     }
 
     /**
@@ -833,6 +830,7 @@ public class UserProvisioningService {
         entity.setStructureId(userDto.getStructureId());
         entity.setRole(findRoleById(userDto.getRoleId()));
         entity.setPasswordHash(generatedPassword);
+        entity.setDataFineValiditaPassword(LocalDate.now().plusMonths(PASSWORD_VALIDITY_MONTHS));
         return userRepository.save(entity);
     }
 
