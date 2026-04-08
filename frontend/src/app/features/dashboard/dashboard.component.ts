@@ -20,6 +20,8 @@ import { AuthService, DashboardResponse, DashboardUserProject, TenantInfo } from
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  private static readonly technicalClientCodes = new Set(['account']);
+
   message = '';
   username = '';
   subject = '';
@@ -306,7 +308,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     userProjects: DashboardUserProject[],
     tenants: TenantInfo[]
   ): Array<{ tenantCode: string, tenantName: string, projects: DashboardUserProject[] }> {
-    const projectsByTenant = userProjects.reduce<Record<string, DashboardUserProject[]>>((accumulator, project) => {
+    const allowedClientCodes = this.extractAllowedClientCodes();
+    const filteredProjects = userProjects.filter((project) => {
+      const tenantCode = project.tenantCode?.trim();
+      return tenantCode ? allowedClientCodes.has(tenantCode) : false;
+    });
+
+    const projectsByTenant = filteredProjects.reduce<Record<string, DashboardUserProject[]>>((accumulator, project) => {
       const tenantCode = project.tenantCode?.trim();
       if (!tenantCode) {
         return accumulator;
@@ -326,7 +334,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }));
 
     const effectiveTenants = (tenants.length > 0 ? tenants : fallbackTenants)
-      .filter((tenant) => tenant.enabled);
+      .filter((tenant) => tenant.enabled)
+      .filter((tenant) => allowedClientCodes.has(tenant.clientCode));
 
     return effectiveTenants.map((tenant) => ({
       tenantCode: tenant.clientCode,
@@ -399,6 +408,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         return projectsByClient;
       }, new Map<string, DashboardUserProject[]>());
+  }
+
+  private extractAllowedClientCodes(): Set<string> {
+    const resourceAccess = this.decodedClaims?.['resource_access'];
+    if (!resourceAccess || typeof resourceAccess !== 'object' || Array.isArray(resourceAccess)) {
+      return new Set();
+    }
+
+    return new Set(
+      Object.keys(resourceAccess)
+        .map((clientCode) => clientCode.trim())
+        .filter((clientCode) => clientCode.length > 0)
+        .filter((clientCode) => !DashboardComponent.technicalClientCodes.has(clientCode))
+    );
   }
 
   /**

@@ -11,12 +11,20 @@ export interface TenantInfo {
   tenantAppUrl: string;
 }
 
-interface LoginResponse {
+export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
   expiresIn: number;
   refreshExpiresIn: number;
+  mustChangePassword?: boolean;
+}
+
+export interface ChangePasswordRequest {
+  username: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface DashboardResponse {
@@ -63,7 +71,15 @@ export class AuthService {
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${environment.apiBaseUrl}/auth/login`, { username, password })
-      .pipe(tap((response) => this.setToken(response.accessToken)));
+      .pipe(tap((response) => {
+        if (response.accessToken) {
+          this.setToken(response.accessToken);
+        }
+      }));
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiBaseUrl}/auth/change-password`, request);
   }
 
   getDashboardData(): Observable<DashboardResponse> {
