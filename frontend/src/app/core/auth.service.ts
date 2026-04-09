@@ -27,6 +27,19 @@ export interface ChangePasswordRequest {
   confirmPassword: string;
 }
 
+export interface PasswordRecoverRequest {
+  email: string;
+}
+
+export interface PasswordRecoverResponse {
+  message: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 export interface DashboardResponse {
   message: string;
   username: string;
@@ -80,6 +93,14 @@ export class AuthService {
 
   changePassword(request: ChangePasswordRequest): Observable<void> {
     return this.http.post<void>(`${environment.apiBaseUrl}/auth/change-password`, request);
+  }
+
+  passwordRecover(request: PasswordRecoverRequest): Observable<PasswordRecoverResponse> {
+    return this.http.post<PasswordRecoverResponse>(`${environment.apiBaseUrl}/auth/passwordrecover`, request);
+  }
+
+  resetPassword(request: ResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiBaseUrl}/auth/reset-password`, request);
   }
 
   getDashboardData(): Observable<DashboardResponse> {

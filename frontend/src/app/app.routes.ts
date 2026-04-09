@@ -8,13 +8,16 @@ import { ChangePasswordComponent } from './shared/change-password/change-passwor
 /**
  * Definizione rotte applicative minime: login pubblico e dashboard protetta.
  */
+
 import { PasswordRecoverComponent } from './features/login/passwordrecover/passwordrecover.component';
+import { ResetPasswordComponent } from './features/login/reset-password/reset-password.component';
 
 export const appRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', component: LoginComponent },
   { path: 'change-password', component: ChangePasswordComponent },
   { path: 'passwordrecover', component: PasswordRecoverComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'patients-tester', component: PatientsTesterComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: 'login' }
