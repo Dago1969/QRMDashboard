@@ -1,4 +1,5 @@
 package com.qtm.dashboard.auth.controller;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.qtm.dashboard.auth.dto.ChangePasswordRequest;
 import com.qtm.dashboard.auth.dto.LoginRequest;
