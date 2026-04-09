@@ -1,3 +1,16 @@
+-- Inserimento template onboarding (italiano)
+INSERT INTO mail_template (code, language, subject, body, enabled, last_update) VALUES (
+    'ONBOARDING', 'it', 'Benvenuto su QTM',
+    'Ciao ${firstName},\n\nIl tuo account è stato creato. Username: ${username}\nAccedi qui: ${loginUrl}\n\nCordiali saluti,\nIl team QTM',
+    TRUE, NOW()
+);
+
+-- Inserimento template onboarding (inglese)
+INSERT INTO mail_template (code, language, subject, body, enabled, last_update) VALUES (
+    'ONBOARDING', 'en', 'Welcome to QTM',
+    'Hi ${firstName},\n\nYour account has been created. Username: ${username}\nLogin here: ${loginUrl}\n\nBest regards,\nThe QTM Team',
+    TRUE, NOW()
+);
 --liquibase formatted sql
 -- changeset copilot:20260409-01-create-mail-template-table
 CREATE TABLE mail_template (
