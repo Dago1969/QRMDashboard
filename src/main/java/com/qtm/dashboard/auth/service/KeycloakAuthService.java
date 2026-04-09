@@ -41,7 +41,7 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 @Slf4j
 public class KeycloakAuthService {
 
-    private static final String ROBUST_PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])\\S{12,}$";
+    private static final String ROBUST_PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])\\S{8,}$";
     private static final int PASSWORD_VALIDITY_MONTHS = 6;
 
     private final RestClient restClient;
@@ -336,8 +336,8 @@ public class KeycloakAuthService {
     private void validateRobustPassword(String newPassword) {
         if (!newPassword.matches(ROBUST_PASSWORD_REGEX)) {
             throw new ResponseStatusException(
-                    BAD_REQUEST,
-                    "La nuova password deve contenere almeno 12 caratteri, una lettera maiuscola, una minuscola, un numero e un carattere speciale, senza spazi");
+                BAD_REQUEST,
+                "La nuova password deve contenere almeno 8 caratteri, una lettera maiuscola, una minuscola, un numero e un carattere speciale, senza spazi");
         }
 
         if (newPassword.toLowerCase().contains("password")) {

@@ -13,7 +13,7 @@ import { ChangePasswordService } from '../change-password.service';
   styleUrl: './change-password.component.css'
 })
 export class ChangePasswordComponent implements OnInit {
-  private static readonly robustPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{12,}$/;
+  private static readonly robustPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{8,}$/;
 
   errorMessage = '';
   successMessage = '';
