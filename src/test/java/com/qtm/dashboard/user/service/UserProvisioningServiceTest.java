@@ -4,6 +4,8 @@ import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.dto.LoginResponse;
 import com.qtm.dashboard.auth.service.KeycloakAuthService;
 import com.qtm.dashboard.config.KeycloakProperties;
+import com.qtm.dashboard.mail.repository.MailTemplateRepository;
+import com.qtm.dashboard.mail.service.MailService;
 import com.qtm.dashboard.user.mapper.UserMapper;
 import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
@@ -49,6 +51,12 @@ class UserProvisioningServiceTest {
     @Mock
     private KeycloakAuthService keycloakAuthService;
 
+    @Mock
+    private MailTemplateRepository mailTemplateRepository;
+
+    @Mock
+    private MailService mailService;
+
     @Captor
     private ArgumentCaptor<LoginRequest> loginRequestCaptor;
 
@@ -61,7 +69,9 @@ class UserProvisioningServiceTest {
                 roleRepository,
                 userMapper,
                 keycloakProperties,
-                keycloakAuthService);
+            keycloakAuthService,
+            mailTemplateRepository,
+            mailService);
     }
 
     @Test

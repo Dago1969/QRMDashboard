@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260409-01-create-mail-template-table" author="copilot">
+        <createTable tableName="mail_template">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="language" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject" type="VARCHAR(256)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="body" type="CLOB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_update" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="mail_template" columnNames="code,language" constraintName="uk_mail_template_code_language"/>
+        <createIndex tableName="mail_template" indexName="idx_mail_template_code_lang">
+            <column name="code"/>
+            <column name="language"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

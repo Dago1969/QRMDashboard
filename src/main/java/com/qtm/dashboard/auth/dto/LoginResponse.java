@@ -2,7 +2,7 @@ package com.qtm.dashboard.auth.dto;
 
 /**
  * DTO di output per la risposta token ottenuta da Keycloak.
- * Esteso per supportare la segnalazione mustChangePassword.
+ * EsRequired user actionsteso per supportare la segnalazione mustChangePassword.
  */
 public class LoginResponse {
     /**

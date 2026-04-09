@@ -13,6 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 /**
  * Entity utenti gestiti centralmente su QTMDashboard.
  */
@@ -75,4 +77,16 @@ public class UserEntity {
      */
     @Column(name = "canale_otp")
     private String canaleOtp;
+
+    /**
+     * Token monouso per reset password via mail.
+     */
+    @Column(name = "password_reset_token", unique = true)
+    private String passwordResetToken;
+
+    /**
+     * Scadenza del token di reset password.
+     */
+    @Column(name = "password_reset_token_expiry")
+    private LocalDateTime passwordResetTokenExpiry;
 }

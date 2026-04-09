@@ -68,8 +68,14 @@ public class KeycloakAuthService {
                 return response;
             } catch (ResponseStatusException ex) {
                 log.warn("[KeycloakAuthService] Login Keycloak fallito con identificativo={}", loginIdentifier);
-                if (requiresPasswordUpdate(loginIdentifier)) {
-                    return mustChangePasswordResponse();
+                try {
+                    if (requiresPasswordUpdate(loginIdentifier)) {
+                        return mustChangePasswordResponse();
+                    }
+                } catch (ResponseStatusException passwordUpdateCheckException) {
+                    log.warn("[KeycloakAuthService] Verifica UPDATE_PASSWORD non disponibile per identificativo={}: {}",
+                            loginIdentifier,
+                            passwordUpdateCheckException.getReason());
                 }
                 lastFailure = ex;
             }
@@ -103,31 +109,30 @@ public class KeycloakAuthService {
         String canonicalUsername = normalizeLoginIdentifier(userEntity.getUsername());
         validateCurrentPassword(canonicalUsername, currentPassword, userEntity);
 
-        Keycloak keycloak = buildAdminClient();
-        try {
-            RealmResource realmResource = keycloak.realm(requiredRealm());
-            UserRepresentation keycloakUser = findKeycloakUser(realmResource, canonicalUsername)
-                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente Keycloak non trovato: " + canonicalUsername));
+        applyPasswordUpdate(userEntity, canonicalUsername, newPassword);
+        verifyNewPasswordIsActive(canonicalUsername, newPassword);
+        verifyOldPasswordIsRejected(canonicalUsername, currentPassword);
+    }
 
-            UserResource userResource = realmResource.users().get(keycloakUser.getId());
-            CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
-            credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
-            credentialRepresentation.setValue(newPassword);
-            credentialRepresentation.setTemporary(false);
-            userResource.resetPassword(credentialRepresentation);
+    /**
+     * Reset password via token: aggiorna sempre Keycloak e rinnova la scadenza password a 6 mesi.
+     */
+    public void resetPassword(com.qtm.dashboard.auth.dto.ResetPasswordRequest request) {
+        String token = normalizeRequiredValue(request.getToken(), "Token reset password obbligatorio");
+        String newPassword = normalizeRequiredValue(request.getNewPassword(), "Nuova password obbligatoria");
 
-            UserRepresentation representation = userResource.toRepresentation();
-            List<String> requiredActions = new ArrayList<>(Optional.ofNullable(representation.getRequiredActions()).orElse(List.of()));
-            requiredActions.removeIf(action -> "UPDATE_PASSWORD".equalsIgnoreCase(action));
-            representation.setRequiredActions(requiredActions);
-            userResource.update(representation);
+        log.info("[KeycloakAuthService] Avvio reset password tramite tokenLength={}", token.length());
 
-            userEntity.setPasswordHash(newPassword);
-            userEntity.setDataFineValiditaPassword(LocalDate.now().plusMonths(PASSWORD_VALIDITY_MONTHS));
-            userRepository.save(userEntity);
-        } finally {
-            keycloak.close();
-        }
+        validateRobustPassword(newPassword);
+
+        UserEntity userEntity = userRepository.findByPasswordResetToken(token)
+                .filter(user -> user.getPasswordResetTokenExpiry() != null)
+                .filter(user -> user.getPasswordResetTokenExpiry().isAfter(java.time.LocalDateTime.now()))
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Token reset password non valido o scaduto"));
+
+        String canonicalUsername = normalizeLoginIdentifier(userEntity.getUsername());
+        applyPasswordUpdate(userEntity, canonicalUsername, newPassword);
+        verifyNewPasswordIsActive(canonicalUsername, newPassword);
     }
 
     List<String> resolveLoginIdentifiers(String rawLoginIdentifier) {
@@ -170,6 +175,12 @@ public class KeycloakAuthService {
             formData.add("password", password);
         }
 
+        log.info("[KeycloakAuthService] Chiamata Keycloak token endpoint: url={}, grantType={}, clientId={}, loginIdentifier={}",
+                keycloakProperties.getTokenUrl(),
+                keycloakProperties.getGrantType(),
+                keycloakProperties.getClientId(),
+                loginIdentifier);
+
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> keycloakResponse = restClient.post()
@@ -182,6 +193,12 @@ public class KeycloakAuthService {
             if (keycloakResponse == null || !keycloakResponse.containsKey("access_token")) {
                 throw new ResponseStatusException(BAD_REQUEST, "Risposta non valida da Keycloak");
             }
+
+            log.info("[KeycloakAuthService] Risposta Keycloak token endpoint: loginIdentifier={}, tokenType={}, expiresIn={}, refreshExpiresIn={}",
+                    loginIdentifier,
+                    String.valueOf(keycloakResponse.getOrDefault("token_type", "Bearer")),
+                    keycloakResponse.getOrDefault("expires_in", "0"),
+                    keycloakResponse.getOrDefault("refresh_expires_in", "0"));
 
             return mapToLoginResponse(keycloakResponse);
         } catch (HttpStatusCodeException ex) {
@@ -250,6 +267,94 @@ public class KeycloakAuthService {
         } catch (ResponseStatusException exception) {
             throw new ResponseStatusException(UNAUTHORIZED, "Password attuale non valida", exception);
         }
+    }
+
+    private void applyPasswordUpdate(UserEntity userEntity, String canonicalUsername, String newPassword) {
+        Keycloak keycloak = buildAdminClient();
+        try {
+            RealmResource realmResource = keycloak.realm(requiredRealm());
+            log.info("[KeycloakAuthService] Chiamata Keycloak search user per password update: realm={}, username={}",
+                requiredRealm(),
+                canonicalUsername);
+            UserRepresentation keycloakUser = findKeycloakUser(realmResource, canonicalUsername)
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utente Keycloak non trovato: " + canonicalUsername));
+
+            log.info("[KeycloakAuthService] Risposta Keycloak search user: username={}, keycloakUserId={}, enabled={}",
+                canonicalUsername,
+                keycloakUser.getId(),
+                keycloakUser.isEnabled());
+
+            UserResource userResource = realmResource.users().get(keycloakUser.getId());
+            CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
+            credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
+            credentialRepresentation.setValue(newPassword);
+            credentialRepresentation.setTemporary(false);
+
+            log.info("[KeycloakAuthService] Chiamata Keycloak resetPassword: realm={}, username={}, keycloakUserId={}, temporary={}",
+                requiredRealm(),
+                canonicalUsername,
+                keycloakUser.getId(),
+                credentialRepresentation.isTemporary());
+            userResource.resetPassword(credentialRepresentation);
+            log.info("[KeycloakAuthService] Risposta Keycloak resetPassword: username={}, keycloakUserId={}, outcome=SUCCESS",
+                canonicalUsername,
+                keycloakUser.getId());
+
+            log.info("[KeycloakAuthService] Chiamata Keycloak toRepresentation per lettura requiredActions: username={}, keycloakUserId={}",
+                canonicalUsername,
+                keycloakUser.getId());
+            UserRepresentation representation = userResource.toRepresentation();
+            List<String> requiredActions = new ArrayList<>(Optional.ofNullable(representation.getRequiredActions()).orElse(List.of()));
+            requiredActions.removeIf(action -> "UPDATE_PASSWORD".equalsIgnoreCase(action));
+            representation.setRequiredActions(requiredActions);
+
+            log.info("[KeycloakAuthService] Chiamata Keycloak update user: username={}, keycloakUserId={}, requiredActions={}",
+                canonicalUsername,
+                keycloakUser.getId(),
+                requiredActions);
+            userResource.update(representation);
+            log.info("[KeycloakAuthService] Risposta Keycloak update user: username={}, keycloakUserId={}, outcome=SUCCESS",
+                canonicalUsername,
+                keycloakUser.getId());
+
+            userEntity.setPasswordHash(newPassword);
+            userEntity.setDataFineValiditaPassword(LocalDate.now().plusMonths(PASSWORD_VALIDITY_MONTHS));
+            userEntity.setPasswordResetToken(null);
+            userEntity.setPasswordResetTokenExpiry(null);
+            userRepository.save(userEntity);
+        } finally {
+            keycloak.close();
+        }
+    }
+
+    private void verifyNewPasswordIsActive(String canonicalUsername, String newPassword) {
+        try {
+            log.info("[KeycloakAuthService] Chiamata Keycloak verifica nuova password: username={}", canonicalUsername);
+            loginWithIdentifier(canonicalUsername, newPassword);
+            log.info("[KeycloakAuthService] Risposta Keycloak verifica nuova password: username={}, outcome=SUCCESS",
+                    canonicalUsername);
+        } catch (ResponseStatusException exception) {
+            throw new ResponseStatusException(UNAUTHORIZED,
+                    "Password aggiornata localmente ma non attiva su Keycloak",
+                    exception);
+        }
+    }
+
+    private void verifyOldPasswordIsRejected(String canonicalUsername, String oldPassword) {
+        try {
+            log.info("[KeycloakAuthService] Chiamata Keycloak verifica rigetto vecchia password: username={}", canonicalUsername);
+            loginWithIdentifier(canonicalUsername, oldPassword);
+        } catch (ResponseStatusException exception) {
+            if (UNAUTHORIZED.equals(exception.getStatusCode())) {
+                log.info("[KeycloakAuthService] Risposta Keycloak verifica vecchia password: username={}, outcome=REJECTED_OLD_PASSWORD",
+                        canonicalUsername);
+                return;
+            }
+            throw exception;
+        }
+
+        throw new ResponseStatusException(UNAUTHORIZED,
+                "Keycloak continua ad accettare la password precedente dopo il cambio");
     }
 
     private Keycloak buildAdminClient() {

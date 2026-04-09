@@ -4,6 +4,9 @@ import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.service.KeycloakAuthService;
 import com.qtm.dashboard.config.KeycloakProperties;
+import com.qtm.dashboard.mail.entity.MailTemplateEntity;
+import com.qtm.dashboard.mail.repository.MailTemplateRepository;
+import com.qtm.dashboard.mail.service.MailService;
 import com.qtm.dashboard.user.entity.RoleEntity;
 import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
@@ -20,6 +23,7 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +63,11 @@ public class UserProvisioningService {
     private final UserMapper userMapper;
     private final KeycloakProperties keycloakProperties;
     private final KeycloakAuthService keycloakAuthService;
+    private final MailTemplateRepository mailTemplateRepository;
+    private final MailService mailService;
+
+    @Value("${app.tenants.default-tenant-app-url:http://localhost:8087/dashboard}")
+    private String loginUrl;
 
     @Transactional
     public UserDto provisionUser(UserDto userDto) {
@@ -96,14 +105,44 @@ public class UserProvisioningService {
             log.info("[UserProvisioningService] Password temporanea generata per username={}: {}", normalizedUsername, generatedPassword);
             applyPassword(keycloakUserResource, generatedPassword);
 
-                UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
+            UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
 
             UserDto result = userMapper.toDto(persistedEntity);
             result.setClientId(requestedClientId);
             result.setPassword(generatedPassword);
+            result.setTemporaryPassword(true);
+            sendOnboardingMail(result, generatedPassword);
             return result;
         } finally {
             keycloak.close();
+        }
+    }
+
+    private void sendOnboardingMail(UserDto userDto, String generatedPassword) {
+        if (userDto.getEmail() == null || userDto.getEmail().isBlank()) {
+            log.info("[UserProvisioningService] Invio onboarding saltato: email assente per username={}", userDto.getUsername());
+            return;
+        }
+
+        MailTemplateEntity template = mailTemplateRepository
+                .findByCodeAndLanguageAndEnabledTrue("ONBOARDING", "it")
+                .or(() -> mailTemplateRepository.findByCodeAndEnabledTrue("ONBOARDING"))
+                .orElse(null);
+
+        if (template == null) {
+            log.warn("[UserProvisioningService] Nessun template ONBOARDING abilitato trovato");
+            return;
+        }
+
+        String body = template.getBody()
+                .replace("${firstName}", userDto.getUsername())
+                .replace("${username}", userDto.getUsername())
+                .replace("${password}", generatedPassword)
+                .replace("${loginUrl}", loginUrl);
+
+        boolean sent = mailService.send(userDto.getEmail(), template.getSubject(), body);
+        if (sent) {
+            log.info("[UserProvisioningService] Mail onboarding inviata a {}", userDto.getEmail());
         }
     }
 

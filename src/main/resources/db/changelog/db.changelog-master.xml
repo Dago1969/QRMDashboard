@@ -7,5 +7,9 @@
 
 
     <include file="20260407-add-user-extra-fields.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-01-create-mail-template-table.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-02-insert-mail-templates.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-03-add-password-reset-token-fields.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-04-update-password-recover-template.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

@@ -17,11 +17,31 @@ spring:
         '[format_sql]': true
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
+
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8085/realms/QTM}
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: francesco.tripodi@gmail.com
+    password: ayekcfnurmmpwrxd
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+          starttls:
+            enable: true
+          ssl:
+            trust: smtp.gmail.com
+
 
 app:
   keycloak:
@@ -53,6 +73,3 @@ app:
         tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:8087/dashboard}
         enabled: true
 
-logging:
-  level:
-    root: INFO
