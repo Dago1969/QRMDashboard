@@ -94,22 +94,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.authService.resolveTenantAppUrl(client).subscribe({
       next: (resolution) => {
-        this.authService.validateTenantRole(role).subscribe({
-          next: () => {
-            const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
-            targetUrl.searchParams.set('token', token);
-            targetUrl.searchParams.set('client', client);
-            targetUrl.searchParams.set('role', role);
-            // Passa project solo se valorizzato
-            if (project !== undefined && project !== null && project !== '') {
-              targetUrl.searchParams.set('project', project);
-            }
-            window.location.href = targetUrl.toString();
-          },
-          error: (error: HttpErrorResponse) => {
-            this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
-          }
-        });
+        const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
+        targetUrl.searchParams.set('token', token);
+        targetUrl.searchParams.set('client', client);
+        targetUrl.searchParams.set('role', role);
+        if (project !== undefined && project !== null && project !== '') {
+          targetUrl.searchParams.set('project', project);
+        }
+        window.location.href = targetUrl.toString();
       },
       error: (error: HttpErrorResponse) => {
         this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));

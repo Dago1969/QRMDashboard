@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
+import org.springframework.lang.NonNull;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -23,9 +24,11 @@ public class DashboardSchemaPreflightInitializer implements ApplicationContextIn
     private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     private static final String DEFAULT_USERNAME = "root";
     private static final String DEFAULT_PASSWORD = "dago";
+    private static final int MAX_CONNECTION_ATTEMPTS = 12;
+    private static final long RETRY_DELAY_MILLIS = 5000L;
 
     @Override
-    public void initialize(ConfigurableApplicationContext applicationContext) {
+    public void initialize(@NonNull ConfigurableApplicationContext applicationContext) {
         Environment environment = applicationContext.getEnvironment();
         String url = environment.getProperty("spring.datasource.url", DEFAULT_URL);
         if (url == null || !url.startsWith("jdbc:mysql:")) {
@@ -35,7 +38,7 @@ public class DashboardSchemaPreflightInitializer implements ApplicationContextIn
         String username = environment.getProperty("spring.datasource.username", DEFAULT_USERNAME);
         String password = environment.getProperty("spring.datasource.password", DEFAULT_PASSWORD);
 
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = openConnectionWithRetry(url, username, password)) {
             if (!hasLegacyUserRolesTable(connection)) {
                 return;
             }
@@ -46,6 +49,36 @@ public class DashboardSchemaPreflightInitializer implements ApplicationContextIn
             log.warn("[QTMDashboard] Rimossa la tabella legacy user_roles per consentire la migrazione del modello ruoli centralizzato");
         } catch (SQLException exception) {
             throw new IllegalStateException("Impossibile eseguire la pre-migrazione schema di QTMDashboard", exception);
+        }
+    }
+
+    private Connection openConnectionWithRetry(String url, String username, String password) throws SQLException {
+        SQLException lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
+            try {
+                return DriverManager.getConnection(url, username, password);
+            } catch (SQLException exception) {
+                lastException = exception;
+                log.warn("[QTMDashboard] Database non ancora pronto al tentativo {}/{}: {}", attempt, MAX_CONNECTION_ATTEMPTS, exception.getMessage());
+
+                if (attempt == MAX_CONNECTION_ATTEMPTS) {
+                    break;
+                }
+
+                sleepBeforeRetry();
+            }
+        }
+
+        throw lastException != null ? lastException : new SQLException("Connessione al database non disponibile");
+    }
+
+    private void sleepBeforeRetry() {
+        try {
+            Thread.sleep(RETRY_DELAY_MILLIS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interruzione durante l'attesa della disponibilita' del database", exception);
         }
     }
 

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Seed iniziale delle tabelle richieste, allineato ai valori del DB locale MySQL su porta 3306. -->
+    <changeSet id="20260411-seed-local-reference-data" author="copilot">
+        <sql splitStatements="true" stripComments="false"><![CDATA[
+INSERT INTO tenant_app_pointer (id, client_code, client_name, tenant_app_url, enabled) VALUES
+  (1, 'postman-client', 'TENANTS-APP Default', 'http://localhost:8087', true),
+  (2, 'app-cliente-A', 'app-cliente-A', 'http://localhost:4201/dashboard', true),
+  (3, 'app-cliente-B', 'app-cliente-B', 'http://localhost:4201/dashboard', true),
+  (4, 'app-cliente-C', 'app-cliente-C', 'http://localhost:4201/dashboard', true);
+
+INSERT INTO projects (id, code, descrizione, tenant_id) VALUES
+  (1, 'PROVA', 'prima prova', 2),
+  (2, 'test_PRJ_1', 'primo test per app-cliente-A', 2),
+  (3, 'test_PRJ_1B', 'primo test per app-cliente-B', 3),
+  (4, 'prj10', 'progetto2', 2),
+  (5, 'prj2', 'progetto2', 2);
+
+INSERT INTO roles (id, name, description, tenant_id) VALUES
+  ('Admin_QTM', 'Admin_QTM', 'lÆutente con privilegi gestionali allÆinterno della piattaforma QTM, con funzioni di configurazione e supervisione a livello di uno o pi¨ tenant (progetti). CRUD completo su anagrafiche, farmaci manuali, PT', NULL),
+  ('Doctor-HospitalReferent', 'Doctor-HospitalReferent', 'Ospedale/reparto assegnato', NULL),
+  ('Operator_QTM', 'Operator_QTM', 'Operator_QTM', NULL),
+  ('SUPER_ADMIN', 'SUPER_ADMIN', 'SUPER_ADMIN', NULL),
+  ('SUPER_ADMIN_B', 'SUPER_ADMIN_B', 'SUPER_ADMIN_B', NULL),
+  ('SUPER_ADMIN_B1', 'SUPER_ADMIN_B1', 'SUPER_ADMIN_B1', NULL),
+  ('Supervisor _FO_FR', 'Supervisor _FO_FR', 'Farmacia ospedaliera o farmacia retail di competenza', NULL),
+  ('Supervisor_ASL', 'Supervisor_ASLX', 'YY figura di riferimento gestionale che opera all''interno della propria ASL nel contesto della piattaforma QTM.', NULL);
+
+INSERT INTO structures (id, address, name, active, city, code, description, email, parent_structure_id, phone, province, region, structure_type, city_id, province_id, region_id, project, project_id, cap, referent_id, service_calendar_hours) VALUES
+  (2, 'Via Tullio Levi Civita, 35', 'FRANCESCO MARIA TRIPODI', true, 'Massa Marittima', 'PROVA', NULL, 'francesco.tripodi@gmail.com', NULL, '3478745993', 'Grosseto', 'Toscana', 'ASL', 4390, 41, 9, NULL, NULL, NULL, NULL, NULL),
+  (4, 'Via Tullio Levi Civita, 35', 'FRANCESCO MARIA TRIPODI', true, 'Massa Marittima', 'PROVA2', NULL, 'francesco.tripodi1@gmail.com', NULL, '3478745993', 'Grosseto', 'Toscana', 'HOSPITAL_PHARMACY', 4390, 41, 9, NULL, NULL, NULL, NULL, NULL),
+  (6, 'ee', 'ASL2', false, NULL, 'ASL2', NULL, NULL, NULL, 'ee', NULL, NULL, 'ASL', 5874, 10, 16, NULL, NULL, 'eee', NULL, NULL),
+  (7, 'rr', 'asl3DENOM', false, NULL, 'ASL3Cod', NULL, NULL, NULL, 'RR', NULL, NULL, 'ASL', 2644, 19, 4, NULL, NULL, 'rr', NULL, NULL),
+  (8, 'Via Tullio Levi Civita, 35', 'FRANCESCO MARIA TRIPODI', true, 'Massa Marittima', 'PROVA4', NULL, 'francesco.tripodi2@gmail.com', NULL, '3478745993', 'Grosseto', 'Toscana', 'HOSPITAL_PHARMACY', 4390, 41, 9, NULL, NULL, NULL, NULL, NULL),
+  (9, 'dd', 'asl5D', false, NULL, 'asl5c', NULL, NULL, NULL, 'cc', NULL, NULL, 'ASL', 4003, 3, 11, NULL, NULL, 'cc', NULL, NULL),
+  (10, 'oo', 'ASL6', false, NULL, 'ALS6', NULL, NULL, NULL, 'oo', NULL, NULL, 'ASL', 2643, 19, 4, NULL, NULL, 'oo', NULL, NULL);
+
+INSERT INTO users (id, email, enabled, password_hash, username, structure_id, role_id, telefono, codice_fiscale, data_fine_validita_password, canale_otp, password_reset_token, password_reset_token_expiry) VALUES
+  (5, 'pinco@almaviva.it', false, 'Pyp2CRFTB5MZiQyC', 'pinco', NULL, 'Admin_QTM', NULL, NULL, NULL, NULL, NULL, NULL),
+  (6, 'francesco.tripodi@almaviva.it', true, 'qtm!32026', 'francesco.tripodi', NULL, 'SUPER_ADMIN', NULL, NULL, NULL, NULL, NULL, NULL),
+  (11, 'francesco.tripodi@gmail.com', true, 'Dago.2026', 'dago', 10, 'SUPER_ADMIN', '3478745993', 'TRPFNC69E23H501T', '2026-10-09', NULL, NULL, NULL);
+
+INSERT INTO user_role_project (user_id, tenant_id, role_id, project_id) VALUES
+  (5, 2, 'Admin_QTM', 2),
+  (6, 2, 'Admin_QTM', 2),
+  (6, 2, 'Doctor-HospitalReferent', 2),
+  (6, 2, 'Operator_QTM', 1),
+  (6, 2, 'SUPER_ADMIN', 1),
+  (6, 2, 'SUPER_ADMIN', 4),
+  (6, 2, 'SUPER_ADMIN', 5),
+  (6, 3, 'Operator_QTM', 2),
+  (7, 2, 'SUPER_ADMIN', 2),
+  (8, 2, 'SUPER_ADMIN', 4),
+  (9, 2, 'SUPER_ADMIN', 1),
+  (10, 2, 'SUPER_ADMIN', 1),
+  (11, 2, 'SUPER_ADMIN', 1);
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>
