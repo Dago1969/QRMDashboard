@@ -2,14 +2,11 @@ server:
   port: ${SERVER_PORT:8086}
 
 spring:
+  profiles:
+    active: ${QTMDB_ENV:sviluppo}
   sql:
     init:
       mode: always
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:dago}
-    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
     properties:
@@ -53,7 +50,7 @@ app:
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
     admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
     # Previous admin client secret: xEO7e15BFOtGOoDk0MWufISzYZGdTWtc  M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY
-    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:xEO7e15BFOtGOoDk0MWufISzYZGdTWtc}
+    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY}
     admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
     admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
     admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}

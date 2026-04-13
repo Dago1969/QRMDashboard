@@ -28,7 +28,8 @@ Le proprietà sono già valorizzate in `src/main/resources/application.yml`.
 ### MySQL
 
 - Host: `localhost`
-- Porta: `3306`
+- Porta sviluppo: `3306`
+- Porta collaudo: `3307`
 - Database: `QTMDashboard`
 - Username: `root`
 - Password: `dago`
@@ -49,9 +50,37 @@ Da root progetto:
 mvn spring-boot:run
 ```
 
+Per selezionare l'ambiente usare la variabile `QTMDB_ENV`:
+
+- `QTMDB_ENV=sviluppo` → usa MySQL locale su `localhost:3306`
+- `QTMDB_ENV=collaudo` → usa MySQL esposto da Docker su `localhost:3307`
+
+Esempi:
+
+```bash
+# Sviluppo locale
+mvn spring-boot:run -Dspring-boot.run.profiles=sviluppo
+
+# Collaudo locale contro DB Docker su 3307
+mvn spring-boot:run -Dspring-boot.run.profiles=collaudo
+```
+
+Oppure via variabile d'ambiente:
+
+```bash
+# PowerShell
+$env:QTMDB_ENV = "sviluppo"
+mvn spring-boot:run
+
+$env:QTMDB_ENV = "collaudo"
+mvn spring-boot:run
+```
+
 Backend disponibile su `http://localhost:8086`.
 
 ## Avvio con Docker
+
+Il `docker-compose.yml` imposta gia `QTMDB_ENV=collaudo` per il backend, mentre all'interno della rete Docker il datasource viene forzato correttamente su `mysql:3306`.
 
 Build immagine:
 
