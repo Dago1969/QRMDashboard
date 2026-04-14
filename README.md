@@ -102,10 +102,14 @@ docker run --rm -p 8086:8086 \
 	-e SPRING_DATASOURCE_URL="jdbc:mysql://<db-host>:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" \
 	-e SPRING_DATASOURCE_USERNAME=root \
 	-e SPRING_DATASOURCE_PASSWORD=dago \
+	-e APP_KEYCLOAK_SERVER_URL="http://<keycloak-host>:8085" \
 	-e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="http://<keycloak-host>:8085/realms/QTM" \
 	-e APP_KEYCLOAK_TOKEN_URL="http://<keycloak-host>:8085/realms/QTM/protocol/openid-connect/token" \
+	-e APP_CORS_ALLOWED_ORIGINS="http://localhost:4200,http://127.0.0.1:4200" \
 	qtm-dashboard
 ```
+
+Nota: su Linux `host.docker.internal` potrebbe non essere risolto automaticamente. Se Keycloak gira in un altro container Docker, collega QTMDB alla stessa rete e usa come host il nome del container Keycloak nelle variabili `APP_KEYCLOAK_SERVER_URL`, `APP_KEYCLOAK_TOKEN_URL` e `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI`.
 
 Nota: se MySQL gira sulla macchina host ma accetta connessioni solo da `localhost`, il container non potra collegarsi finche il server MySQL non viene configurato per ascoltare anche su un indirizzo raggiungibile dal container.
 

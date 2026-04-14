@@ -41,6 +41,8 @@ spring:
 
 
 app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
   keycloak:
     server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
     realm: ${APP_KEYCLOAK_REALM:QTM}
