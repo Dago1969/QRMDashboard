@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
-// DTO allineato a QTMPatients
+// DTO paziente condiviso con il backend QTMDB.
 export interface PatientDto {
   id?: number;
   assistedId?: string;
@@ -17,16 +18,35 @@ export interface PatientDto {
   region?: string;
   provinceId?: number;
   province?: string;
-  // aggiungi altri campi se presenti in QTMPatients
+  cityId?: number;
+  city?: string;
+  deliveryAddress?: string;
+  secondaryAddresses?: string;
+  communicationChannels?: string;
+  identificationDocumentReference?: string;
+  dataProcessingConsent?: boolean;
+  dataProcessingConsentDateTime?: string;
+  dataProcessingConsentRevocationLog?: string;
+  additionalConsents?: string;
+  therapyStatus?: string;
+  prescribingSpecialist?: string;
+  referenceHospitalStructure?: string;
+  referencePharmacy?: string;
+  preferredPickupPharmacy?: string;
+  deliveryMode?: string;
+  reminderEnabled?: boolean;
+  caregiverFullName?: string;
+  caregiverPhone?: string;
+  preferredContact?: string;
+  structureId?: number;
 }
 
 /**
- * Service per chiamare i servizi REST di QTMPatients da QTMDashboard.
- * Gestisce tutte le operazioni CRUD e la propagazione del JWT tramite HttpInterceptor.
+ * Service per chiamare i servizi REST pazienti gestiti direttamente da QTMDB.
  */
 @Injectable({ providedIn: 'root' })
 export class PatientApiService {
-  private readonly baseUrl = 'http://localhost:8088/api/patients';
+  private readonly baseUrl = `${environment.apiBaseUrl}/patients`;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -78,8 +98,7 @@ export class PatientApiService {
   /**
    * Gestione centralizzata degli errori HTTP.
    */
-  private handleError(error: any) {
-    // Qui puoi loggare, mostrare toast, ecc.
+  private handleError(error: unknown) {
     return throwError(() => error);
   }
 }

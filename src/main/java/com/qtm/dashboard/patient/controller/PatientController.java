@@ -1,7 +1,9 @@
 package com.qtm.dashboard.patient.controller;
 
 import com.qtm.commonlib.dto.PatientDto;
+import com.qtm.dashboard.patient.service.PatientSearchCriteria;
 import com.qtm.dashboard.patient.service.PatientService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -11,12 +13,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 /**
- * Controller REST pazienti per il consumo da TENANTS-APP.
+ * Controller REST pazienti persistiti e gestiti direttamente da QTMDB.
  */
 @RestController
 @RequestMapping("/api/patients")
@@ -25,14 +28,17 @@ public class PatientController {
 
     private final PatientService patientService;
 
-    @PostMapping
-    public ResponseEntity<PatientDto> create(@RequestBody PatientDto patientDto) {
-        return ResponseEntity.ok(patientService.create(patientDto));
-    }
-
     @GetMapping
-    public ResponseEntity<List<PatientDto>> findAll() {
-        return ResponseEntity.ok(patientService.findAll());
+    public ResponseEntity<List<PatientDto>> search(
+            @RequestParam(required = false) String assistedId,
+            @RequestParam(required = false) String firstName,
+            @RequestParam(required = false) String lastName,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String fiscalCode,
+            @RequestParam(required = false) Long structureId
+    ) {
+        PatientSearchCriteria criteria = new PatientSearchCriteria(assistedId, firstName, lastName, email, fiscalCode, structureId);
+        return ResponseEntity.ok(patientService.search(criteria));
     }
 
     @GetMapping("/{id}")
@@ -40,8 +46,13 @@ public class PatientController {
         return ResponseEntity.ok(patientService.findById(id));
     }
 
+    @PostMapping
+    public ResponseEntity<PatientDto> create(@Valid @RequestBody PatientDto patientDto) {
+        return ResponseEntity.ok(patientService.create(patientDto));
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<PatientDto> update(@PathVariable Long id, @RequestBody PatientDto patientDto) {
+    public ResponseEntity<PatientDto> update(@PathVariable Long id, @Valid @RequestBody PatientDto patientDto) {
         return ResponseEntity.ok(patientService.update(id, patientDto));
     }
 

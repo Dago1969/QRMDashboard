@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.admin.client.resource.ClientsResource;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.RolesResource;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +30,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
@@ -57,6 +62,18 @@ class UserProvisioningServiceTest {
     @Mock
     private MailService mailService;
 
+    @Mock
+    private RealmResource realmResource;
+
+    @Mock
+    private ClientsResource clientsResource;
+
+    @Mock
+    private ClientResource clientResource;
+
+    @Mock
+    private RolesResource rolesResource;
+
     @Captor
     private ArgumentCaptor<LoginRequest> loginRequestCaptor;
 
@@ -72,6 +89,10 @@ class UserProvisioningServiceTest {
             keycloakAuthService,
             mailTemplateRepository,
             mailService);
+
+                lenient().when(realmResource.clients()).thenReturn(clientsResource);
+                lenient().when(clientsResource.get("client-uuid")).thenReturn(clientResource);
+                lenient().when(clientResource.roles()).thenReturn(rolesResource);
     }
 
     @Test
@@ -138,4 +159,129 @@ class UserProvisioningServiceTest {
 
         Assertions.assertTrue(result.isEmpty());
     }
+
+    @Test
+    void resolveClientRolesToAssignShouldUseClientRolesCatalogForExplicitRoleMatch() throws Exception {
+        ClientRepresentation clientRepresentation = new ClientRepresentation();
+        clientRepresentation.setClientId("app-cliente-A");
+
+        RoleRepresentation clientRole = new RoleRepresentation();
+        clientRole.setName("Nurse_QTM");
+
+        Method method = UserProvisioningService.class.getDeclaredMethod(
+                "resolveClientRolesToAssign",
+                ClientRepresentation.class,
+                List.class,
+                List.class,
+                List.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<RoleRepresentation> result = (List<RoleRepresentation>) method.invoke(
+                userProvisioningService,
+                clientRepresentation,
+                List.of(),
+                List.of(clientRole),
+                List.of("Nurse_QTM"));
+
+        assertEquals(1, result.size());
+        assertEquals("Nurse_QTM", result.get(0).getName());
+    }
+
+    @Test
+    void ensureRequestedClientRolesExistShouldCreateMissingClientRole() throws Exception {
+        ClientRepresentation clientRepresentation = new ClientRepresentation();
+        clientRepresentation.setId("client-uuid");
+        clientRepresentation.setClientId("app-cliente-A");
+
+        RoleRepresentation existingRole = new RoleRepresentation();
+        existingRole.setName("SUPER_ADMIN");
+
+        RoleRepresentation createdRole = new RoleRepresentation();
+        createdRole.setName("Nurse_QTM");
+
+        when(rolesResource.list()).thenReturn(List.of(existingRole, createdRole));
+
+        Method method = UserProvisioningService.class.getDeclaredMethod(
+                "ensureRequestedClientRolesExist",
+                RealmResource.class,
+                ClientRepresentation.class,
+                List.class,
+                List.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<RoleRepresentation> result = (List<RoleRepresentation>) method.invoke(
+                userProvisioningService,
+                realmResource,
+                clientRepresentation,
+                List.of(existingRole),
+                List.of("Nurse_QTM"));
+
+        ArgumentCaptor<RoleRepresentation> createdRoleCaptor = ArgumentCaptor.forClass(RoleRepresentation.class);
+        verify(rolesResource).create(createdRoleCaptor.capture());
+        assertEquals("Nurse_QTM", createdRoleCaptor.getValue().getName());
+        assertEquals(List.of("SUPER_ADMIN", "Nurse_QTM"), result.stream().map(RoleRepresentation::getName).toList());
+    }
+
+    @Test
+    void resolveAdminAuthenticationModesShouldIncludePasswordFallbackAfterClientCredentials() throws Exception {
+        Method method = UserProvisioningService.class.getDeclaredMethod(
+                "resolveAdminAuthenticationModes",
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> result = (List<String>) method.invoke(
+                userProvisioningService,
+                "client_credentials",
+                "admin-cli-helper",
+                "secret",
+                "admin",
+                "password");
+
+        assertEquals(List.of("client_credentials", "password"), result);
+    }
+
+    @Test
+    void resolveAdminAuthenticationModesShouldFallbackToPasswordWhenClientCredentialsAreMissing() throws Exception {
+        Method method = UserProvisioningService.class.getDeclaredMethod(
+                "resolveAdminAuthenticationModes",
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> result = (List<String>) method.invoke(
+                userProvisioningService,
+                "client_credentials",
+                null,
+                null,
+                "admin",
+                "password");
+
+        assertEquals(List.of("password"), result);
+    }
+
+        @Test
+        void resolveAdminClientSecretCandidatesShouldReturnDistinctOrderedSecrets() throws Exception {
+                Method method = UserProvisioningService.class.getDeclaredMethod(
+                                "resolveAdminClientSecretCandidates",
+                                String.class);
+                method.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
+                List<String> result = (List<String>) method.invoke(
+                                userProvisioningService,
+                                " secret-A , secret-B,secret-A ");
+
+                assertEquals(List.of("secret-A", "secret-B"), result);
+        }
 }
