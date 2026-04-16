@@ -1,0 +1,75 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: qtmdashboard-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: dago
+      MYSQL_DATABASE: QTMDashboard
+    ports:
+      - "3307:3306"
+    volumes:
+      - qtmdashboard-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -pdago --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - qtm-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qtmdashboard-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      QTMDB_ENV: collaudo
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: dago
+      # MODIFICA: Usa il nome del servizio Docker e la porta interna 8080
+      APP_KEYCLOAK_SERVER_URL: http://keycloak:8080
+      APP_KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/QTM/protocol/openid-connect/token
+      # IMPORTANTE: L'ISSUER deve rimanere localhost:8085 perché è quello che vede il browser
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8085/realms/QTM     
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:4200,http://127.0.0.1:4200
+      # AGGIUNGI QUESTA RIGA: 
+      # Forza il backend a scaricare le chiavi di validazione tramite la rete interna Docker
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/QTM/protocol/openid-connect/certs
+    ports:
+      - "8086:8086"
+    networks:
+      - qtm-network
+      - keycloak-net # Rete condivisa con l'altro container
+    extra_hosts:
+     - "localhost:host-gateway"
+  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: qtmdashboard-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - qtm-network
+
+networks:
+  qtm-network:
+    driver: bridge
+  # Qui dichiariamo la rete esistente dell'altro progetto Docker
+  keycloak-net:
+    external: true
+    name: keycloak-docker_default # Sostituisci con il nome reale della rete esterna
+
+volumes:
+  qtmdashboard-mysql-data:
+    driver: local

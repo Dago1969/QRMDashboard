@@ -2,29 +2,47 @@ server:
   port: ${SERVER_PORT:8086}
 
 spring:
+  profiles:
+    active: ${QTMDB_ENV:sviluppo}
   sql:
     init:
       mode: always
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:dago}
-    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
-    defer-datasource-initialization: true
-    hibernate:
-      ddl-auto: update
     open-in-view: false
     properties:
       hibernate:
         '[format_sql]': true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8085/realms/QTM}
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: francesco.tripodi@gmail.com
+    password: ayekcfnurmmpwrxd
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+          starttls:
+            enable: true
+          ssl:
+            trust: smtp.gmail.com
+
+
 app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
   keycloak:
     server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
     realm: ${APP_KEYCLOAK_REALM:QTM}
@@ -33,12 +51,13 @@ app:
     client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
     admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
-    # Previous admin client secret: xEO7e15BFOtGOoDk0MWufISzYZGdTWtc
+    # Previous admin client secret: xEO7e15BFOtGOoDk0MWufISzYZGdTWtc  M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY
     admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY}
     admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
+    admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
+    admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}
+    admin-user-realm: ${APP_KEYCLOAK_ADMIN_USER_REALM:master}
     client-association-attribute: ${APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE:qtm-client-id}
-  patients:
-    api-base-url: ${APP_PATIENTS_API_BASE_URL:http://localhost:8088/api}
   tenants:
     default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:8087/dashboard}
     mappings:
@@ -51,6 +70,3 @@ app:
         tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:8087/dashboard}
         enabled: true
 
-logging:
-  level:
-    root: INFO

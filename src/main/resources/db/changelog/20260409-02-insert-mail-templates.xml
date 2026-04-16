@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260409-02-insert-mail-templates" author="copilot" runOnChange="true">
+        <!-- Inserimento template onboarding (italiano) -->
+        <insert tableName="mail_template">
+            <column name="code" value="ONBOARDING"/>
+            <column name="language" value="it"/>
+            <column name="subject" value="Benvenuto su QTM"/>
+            <column name="body" value="Ciao ${firstName},\n\nIl tuo account è stato creato. Username: ${username}\nAccedi qui: ${loginUrl}\n\nCordiali saluti,\nIl team QTM"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="last_update" valueComputed="NOW()"/>
+        </insert>
+        <!-- Inserimento template onboarding (inglese) -->
+        <insert tableName="mail_template">
+            <column name="code" value="ONBOARDING"/>
+            <column name="language" value="en"/>
+            <column name="subject" value="Welcome to QTM"/>
+            <column name="body" value="Hi ${firstName},\n\nYour account has been created. Username: ${username}\nLogin here: ${loginUrl}\n\nBest regards,\nThe QTM Team"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="last_update" valueComputed="NOW()"/>
+        </insert>
+        <!-- Inserimento template password recovery (italiano) -->
+        <insert tableName="mail_template">
+            <column name="code" value="PASSWORD_RECOVER"/>
+            <column name="language" value="it"/>
+            <column name="subject" value="Recupero password QTM"/>
+            <column name="body" value="Ciao ${firstName},\n\nAbbiamo ricevuto una richiesta di reset password per il tuo account.\nClicca qui per impostare una nuova password: ${resetUrl}\nSe non hai richiesto tu il reset, ignora questa mail.\n\nCordiali saluti,\nIl team QTM"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="last_update" valueComputed="NOW()"/>
+        </insert>
+        <!-- Inserimento template password recovery (inglese) -->
+        <insert tableName="mail_template">
+            <column name="code" value="PASSWORD_RECOVER"/>
+            <column name="language" value="en"/>
+            <column name="subject" value="QTM Password Recovery"/>
+            <column name="body" value="Hi ${firstName},\n\nWe received a password reset request for your account.\nClick here to set a new password: ${resetUrl}\nIf you did not request this, please ignore this email.\n\nBest regards,\nThe QTM Team"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="last_update" valueComputed="NOW()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="20260409-03-update-onboarding-mail-templates" author="copilot">
+        <update tableName="mail_template">
+            <column name="body" value="Ciao ${firstName},\n\nIl tuo account è stato creato correttamente.\nUsername: ${username}\nPassword temporanea: ${password}\nAccedi qui: ${loginUrl}\n\nPer motivi di sicurezza dovrai cambiare la password al primo login.\n\nCordiali saluti,\nIl team QTM"/>
+            <where>code = 'ONBOARDING' AND language = 'it'</where>
+        </update>
+        <update tableName="mail_template">
+            <column name="body" value="Hi ${firstName},\n\nYour account has been created successfully.\nUsername: ${username}\nTemporary password: ${password}\nLogin here: ${loginUrl}\n\nFor security reasons, you will be required to change your password at first login.\n\nBest regards,\nThe QTM Team"/>
+            <where>code = 'ONBOARDING' AND language = 'en'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

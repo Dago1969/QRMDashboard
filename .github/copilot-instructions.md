@@ -1,5 +1,11 @@
 # Logging
-- Non usare mai System.out.println o System.err.println per loggare nei progetti Java: usa sempre un logger (es. SLF4J, Lombok @Slf4j, LoggerFactory, ecc.)
+
+## Modifiche al Database
+Tutte le modifiche al database (creazione, modifica, cancellazione tabelle/campi/indici/constraint) DEVONO essere gestite esclusivamente tramite Liquibase. Non sono ammesse modifiche manuali o script SQL diretti: ogni variazione deve essere tracciata in changelog Liquibase e versionata.
+
+Non essendo ancora presente Liquibase nel progetto QTMDB, va configurato e ogni attività di modifica DB deve essere inserita tramite changelog.
+
+Non rispettare questa regola comporta la non accettazione della modifica.
 
 # Compilazione globale
 

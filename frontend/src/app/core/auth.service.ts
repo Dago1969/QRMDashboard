@@ -3,12 +3,41 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-interface LoginResponse {
+export interface TenantInfo {
+  id: number;
+  clientCode: string;
+  clientName: string;
+  enabled: boolean;
+  tenantAppUrl: string;
+}
+
+export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
   expiresIn: number;
   refreshExpiresIn: number;
+  mustChangePassword?: boolean;
+}
+
+export interface ChangePasswordRequest {
+  username: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface PasswordRecoverRequest {
+  email: string;
+}
+
+export interface PasswordRecoverResponse {
+  message: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
 }
 
 export interface DashboardResponse {
@@ -48,10 +77,30 @@ export class AuthService {
 
   constructor(private readonly http: HttpClient) {}
 
+  getAllTenants(): Observable<TenantInfo[]> {
+    return this.http.get<TenantInfo[]>(`${environment.apiBaseUrl}/tenant-app-pointers`);
+  }
+
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${environment.apiBaseUrl}/auth/login`, { username, password })
-      .pipe(tap((response) => this.setToken(response.accessToken)));
+      .pipe(tap((response) => {
+        if (response.accessToken) {
+          this.setToken(response.accessToken);
+        }
+      }));
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiBaseUrl}/auth/change-password`, request);
+  }
+
+  passwordRecover(request: PasswordRecoverRequest): Observable<PasswordRecoverResponse> {
+    return this.http.post<PasswordRecoverResponse>(`${environment.apiBaseUrl}/auth/passwordrecover`, request);
+  }
+
+  resetPassword(request: ResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiBaseUrl}/auth/reset-password`, request);
   }
 
   getDashboardData(): Observable<DashboardResponse> {

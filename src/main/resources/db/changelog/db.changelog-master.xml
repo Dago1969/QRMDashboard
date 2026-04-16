@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <include file="20260411-00-initial-schema.xml" relativeToChangelogFile="true"/>
+    <include file="20260407-add-user-extra-fields.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-01-create-mail-template-table.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-02-insert-mail-templates.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-03-add-password-reset-token-fields.xml" relativeToChangelogFile="true"/>
+    <include file="20260409-04-update-password-recover-template.xml" relativeToChangelogFile="true"/>
+    <include file="20260411-01-seed-local-reference-data.xml" relativeToChangelogFile="true"/>
+    <include file="20260414-01-create-patients-table.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { NgIf } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -17,6 +17,7 @@ import { I18nPropertiesService } from '../../core/i18n-properties.service';
 })
 export class LoginComponent implements OnInit {
   errorMessage = '';
+  infoMessage = '';
   translations: Record<string, string> = {};
   readonly loginForm;
 
@@ -24,6 +25,7 @@ export class LoginComponent implements OnInit {
     private readonly formBuilder: FormBuilder,
     private readonly authService: AuthService,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
     private readonly i18nPropertiesService: I18nPropertiesService
   ) {
     this.loginForm = this.formBuilder.nonNullable.group({
@@ -36,6 +38,11 @@ export class LoginComponent implements OnInit {
     this.i18nPropertiesService.loadTranslations(navigator.language).subscribe({
       next: (translationMap) => {
         this.translations = translationMap;
+        this.route.queryParamMap.subscribe((params) => {
+          this.infoMessage = params.get('passwordChanged') === 'true'
+            ? this.t('login.info.passwordChanged')
+            : '';
+        });
       }
     });
   }
@@ -61,7 +68,16 @@ export class LoginComponent implements OnInit {
     this.errorMessage = '';
 
     this.authService.login(normalizedUsername, password).subscribe({
-      next: () => {
+      next: (response) => {
+        if (response.mustChangePassword) {
+          this.router.navigate(['/change-password'], {
+            queryParams: {
+              username: normalizedUsername,
+              reason: 'first-access'
+            }
+          });
+          return;
+        }
         this.router.navigate(['/dashboard']);
       },
       error: () => {

@@ -4,6 +4,9 @@ import com.qtm.commonlib.dto.UserDto;
 import com.qtm.dashboard.auth.dto.LoginRequest;
 import com.qtm.dashboard.auth.service.KeycloakAuthService;
 import com.qtm.dashboard.config.KeycloakProperties;
+import com.qtm.dashboard.mail.entity.MailTemplateEntity;
+import com.qtm.dashboard.mail.repository.MailTemplateRepository;
+import com.qtm.dashboard.mail.service.MailService;
 import com.qtm.dashboard.user.entity.RoleEntity;
 import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
@@ -14,17 +17,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -51,11 +57,18 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 @RequiredArgsConstructor
 public class UserProvisioningService {
 
+    private static final int PASSWORD_VALIDITY_MONTHS = 6;
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final KeycloakProperties keycloakProperties;
     private final KeycloakAuthService keycloakAuthService;
+    private final MailTemplateRepository mailTemplateRepository;
+    private final MailService mailService;
+
+    @Value("${app.tenants.default-tenant-app-url:http://localhost:8087/dashboard}")
+    private String loginUrl;
 
     @Transactional
     public UserDto provisionUser(UserDto userDto) {
@@ -90,18 +103,47 @@ public class UserProvisioningService {
                     requestedClient,
                     requestedClientRoleNames);
 
-            log.info("[UserProvisioningService] Password generata per username={}: {}", normalizedUsername, generatedPassword);
-            applyPasswordWithoutRequiredChange(keycloakUserResource, generatedPassword);
-                verifyKeycloakLogin(normalizedUsername, generatedPassword);
+            log.info("[UserProvisioningService] Password temporanea generata per username={}: {}", normalizedUsername, generatedPassword);
+            applyPassword(keycloakUserResource, generatedPassword);
 
-                UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
+            UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
 
             UserDto result = userMapper.toDto(persistedEntity);
             result.setClientId(requestedClientId);
             result.setPassword(generatedPassword);
+            result.setTemporaryPassword(true);
+            sendOnboardingMail(result, generatedPassword);
             return result;
         } finally {
             keycloak.close();
+        }
+    }
+
+    private void sendOnboardingMail(UserDto userDto, String generatedPassword) {
+        if (userDto.getEmail() == null || userDto.getEmail().isBlank()) {
+            log.info("[UserProvisioningService] Invio onboarding saltato: email assente per username={}", userDto.getUsername());
+            return;
+        }
+
+        MailTemplateEntity template = mailTemplateRepository
+                .findByCodeAndLanguageAndEnabledTrue("ONBOARDING", "it")
+                .or(() -> mailTemplateRepository.findByCodeAndEnabledTrue("ONBOARDING"))
+                .orElse(null);
+
+        if (template == null) {
+            log.warn("[UserProvisioningService] Nessun template ONBOARDING abilitato trovato");
+            return;
+        }
+
+        String body = template.getBody()
+                .replace("${firstName}", userDto.getUsername())
+                .replace("${username}", userDto.getUsername())
+                .replace("${password}", generatedPassword)
+                .replace("${loginUrl}", loginUrl);
+
+        boolean sent = mailService.send(userDto.getEmail(), template.getSubject(), body);
+        if (sent) {
+            log.info("[UserProvisioningService] Mail onboarding inviata a {}", userDto.getEmail());
         }
     }
 
@@ -144,7 +186,7 @@ public class UserProvisioningService {
 
             UserResource userResource = realmResource.users().get(existingUser.getId());
             synchronizeClientAssociation(userResource, normalizedClientId);
-            synchronizeClientRoleAssociation(userResource, requestedClient, requestedClientRoleNames);
+            synchronizeClientRoleAssociation(userResource, realmResource, requestedClient, requestedClientRoleNames);
             log.info("[UserProvisioningService] Sincronizzazione Keycloak completata: userId={}, username={}, clientId={}",
                 userId,
                 normalizedUsername,
@@ -173,25 +215,187 @@ public class UserProvisioningService {
 
     private Keycloak buildAdminClient() {
         String serverUrl = normalizeRequired(keycloakProperties.getServerUrl(), "Server URL Keycloak mancante");
-        String realm = requiredRealm();
-        String adminGrantType = normalizeRequired(keycloakProperties.getAdminGrantType(), "Grant type admin Keycloak mancante");
-        String adminClientId = normalizeRequired(keycloakProperties.getAdminClientId(), "Admin clientId Keycloak mancante");
-        String adminClientSecret = normalizeRequired(keycloakProperties.getAdminClientSecret(), "Admin clientSecret Keycloak mancante");
+        String configuredGrantType = normalizeNullable(keycloakProperties.getAdminGrantType());
+        String adminClientId = normalizeNullable(keycloakProperties.getAdminClientId());
+        String adminClientSecret = normalizeNullable(keycloakProperties.getAdminClientSecret());
+        String adminUsername = normalizeNullable(keycloakProperties.getAdminUsername());
+        String adminPassword = normalizeNullable(keycloakProperties.getAdminPassword());
+        String adminUserRealm = normalizeNullable(keycloakProperties.getAdminUserRealm());
 
-        log.info("[UserProvisioningService] Creazione admin client Keycloak: serverUrl={}, realm={}, adminClientId={}, adminGrantType={}, adminClientSecretMasked={}",
-            serverUrl,
-            realm,
-            adminClientId,
-            adminGrantType,
-            maskSecret(adminClientSecret));
+        if (configuredGrantType == null) {
+            configuredGrantType = adminClientSecret != null ? "client_credentials" : (adminUsername != null && adminPassword != null ? "password" : null);
+        }
 
-        return KeycloakBuilder.builder()
-            .serverUrl(serverUrl)
-            .realm(realm)
-            .grantType(adminGrantType)
-            .clientId(adminClientId)
-            .clientSecret(adminClientSecret)
-            .build();
+        if (configuredGrantType == null) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Configurazione admin Keycloak mancante: valorizza APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET oppure APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD");
+        }
+
+        List<String> authenticationModes = resolveAdminAuthenticationModes(
+                configuredGrantType,
+                adminClientId,
+                adminClientSecret,
+                adminUsername,
+                adminPassword);
+        Exception lastException = null;
+
+        for (int index = 0; index < authenticationModes.size(); index++) {
+            String authenticationMode = authenticationModes.get(index);
+            boolean fallbackAttempt = index > 0;
+            List<String> adminClientSecretCandidates = "client_credentials".equals(authenticationMode)
+                    ? resolveAdminClientSecretCandidates(adminClientSecret)
+                    : List.of(adminClientSecret);
+
+            for (int secretIndex = 0; secretIndex < adminClientSecretCandidates.size(); secretIndex++) {
+                String adminClientSecretCandidate = adminClientSecretCandidates.get(secretIndex);
+                boolean credentialFallbackAttempt = fallbackAttempt || secretIndex > 0;
+                Keycloak keycloak = buildAdminClientForMode(
+                        authenticationMode,
+                        credentialFallbackAttempt,
+                        serverUrl,
+                        adminClientId,
+                        adminClientSecretCandidate,
+                        adminUsername,
+                        adminPassword,
+                        adminUserRealm);
+
+                try {
+                    keycloak.tokenManager().getAccessTokenString();
+                    if (credentialFallbackAttempt) {
+                        log.warn("[UserProvisioningService] Autenticazione admin Keycloak riuscita al tentativo fallback con mode={}", authenticationMode);
+                    }
+                    return keycloak;
+                } catch (Exception exception) {
+                    keycloak.close();
+                    lastException = exception;
+                    log.warn("[UserProvisioningService] Autenticazione admin Keycloak fallita con mode={}: {}",
+                            authenticationMode,
+                            Objects.toString(exception.getMessage(), "<no-message>"));
+                }
+            }
+        }
+
+        throw new ResponseStatusException(
+                UNAUTHORIZED,
+                "Autenticazione admin Keycloak fallita: verifica APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET oppure configura APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD",
+                lastException);
+    }
+
+    private List<String> resolveAdminAuthenticationModes(String configuredGrantType,
+                                                         String adminClientId,
+                                                         String adminClientSecret,
+                                                         String adminUsername,
+                                                         String adminPassword) {
+        boolean hasClientCredentials = adminClientId != null && adminClientSecret != null;
+        boolean hasPasswordCredentials = adminUsername != null && adminPassword != null;
+
+        if (!hasClientCredentials && !hasPasswordCredentials) {
+            return List.of();
+        }
+
+        String normalizedConfiguredGrantType = configuredGrantType != null ? configuredGrantType.trim().toLowerCase(Locale.ROOT) : null;
+        if (normalizedConfiguredGrantType == null) {
+            normalizedConfiguredGrantType = hasClientCredentials ? "client_credentials" : "password";
+        }
+
+        List<String> authenticationModes = new ArrayList<>();
+        addAdminAuthenticationMode(authenticationModes, normalizedConfiguredGrantType, hasClientCredentials, hasPasswordCredentials);
+        addAdminAuthenticationMode(authenticationModes, "client_credentials", hasClientCredentials, hasPasswordCredentials);
+        addAdminAuthenticationMode(authenticationModes, "password", hasClientCredentials, hasPasswordCredentials);
+        return authenticationModes;
+    }
+
+    private void addAdminAuthenticationMode(List<String> authenticationModes,
+                                            String candidateMode,
+                                            boolean hasClientCredentials,
+                                            boolean hasPasswordCredentials) {
+        if (candidateMode == null || authenticationModes.contains(candidateMode)) {
+            return;
+        }
+
+        boolean supportedMode = "client_credentials".equals(candidateMode) || "password".equals(candidateMode);
+        if (!supportedMode) {
+            throw new ResponseStatusException(BAD_REQUEST, "Grant type admin Keycloak non supportato: " + candidateMode);
+        }
+
+        if ("client_credentials".equals(candidateMode) && hasClientCredentials) {
+            authenticationModes.add(candidateMode);
+        }
+        if ("password".equals(candidateMode) && hasPasswordCredentials) {
+            authenticationModes.add(candidateMode);
+        }
+    }
+
+    private List<String> resolveAdminClientSecretCandidates(String adminClientSecret) {
+        List<String> candidates = Optional.ofNullable(adminClientSecret)
+                .stream()
+                .flatMap(secret -> java.util.Arrays.stream(secret.split(",")))
+                .map(this::normalizeNullable)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        return candidates.isEmpty() ? List.of((String) null) : candidates;
+    }
+
+    private Keycloak buildAdminClientForMode(String authenticationMode,
+                                             boolean fallbackAttempt,
+                                             String serverUrl,
+                                             String adminClientId,
+                                             String adminClientSecret,
+                                             String adminUsername,
+                                             String adminPassword,
+                                             String adminUserRealm) {
+        if ("client_credentials".equals(authenticationMode)) {
+            String resolvedAdminClientId = normalizeRequired(adminClientId, "Admin clientId Keycloak mancante");
+            String resolvedAdminClientSecret = normalizeRequired(adminClientSecret, "Admin clientSecret Keycloak mancante");
+            String realm = requiredRealm();
+
+            log.info("[UserProvisioningService] Creazione admin client Keycloak: mode=client_credentials, fallbackAttempt={}, serverUrl={}, realm={}, adminClientId={}, adminClientSecretMasked={}",
+                    fallbackAttempt,
+                    serverUrl,
+                    realm,
+                    resolvedAdminClientId,
+                    maskSecret(resolvedAdminClientSecret));
+
+            return KeycloakBuilder.builder()
+                    .serverUrl(serverUrl)
+                    .realm(realm)
+                    .grantType("client_credentials")
+                    .clientId(resolvedAdminClientId)
+                    .clientSecret(resolvedAdminClientSecret)
+                    .build();
+        }
+
+        if ("password".equals(authenticationMode)) {
+            String resolvedAdminClientId = fallbackAttempt ? "admin-cli" : (adminClientId != null ? adminClientId : "admin-cli");
+            String resolvedAdminUsername = normalizeRequired(adminUsername, "Admin username Keycloak mancante");
+            String resolvedAdminPassword = normalizeRequired(adminPassword, "Admin password Keycloak mancante");
+            String realm = adminUserRealm != null ? adminUserRealm : "master";
+
+            log.info("[UserProvisioningService] Creazione admin client Keycloak: mode=password, fallbackAttempt={}, serverUrl={}, realm={}, adminClientId={}, adminUsername={}",
+                    fallbackAttempt,
+                    serverUrl,
+                    realm,
+                    resolvedAdminClientId,
+                    resolvedAdminUsername);
+
+            KeycloakBuilder builder = KeycloakBuilder.builder()
+                    .serverUrl(serverUrl)
+                    .realm(realm)
+                    .grantType("password")
+                    .clientId(resolvedAdminClientId)
+                    .username(resolvedAdminUsername)
+                    .password(resolvedAdminPassword);
+
+            if (!fallbackAttempt && adminClientSecret != null) {
+                builder.clientSecret(adminClientSecret);
+            }
+
+            return builder.build();
+        }
+
+        throw new ResponseStatusException(BAD_REQUEST, "Grant type admin Keycloak non supportato: " + authenticationMode);
     }
 
     private String requiredRealm() {
@@ -234,13 +438,13 @@ public class UserProvisioningService {
             String createdUserId = createKeycloakUser(realmResource, userDto, normalizedUsername, requestedClientId);
             UserResource createdUserResource = realmResource.users().get(createdUserId);
             synchronizeClientAssociation(createdUserResource, requestedClientId);
-            synchronizeClientRoleAssociation(createdUserResource, requestedClient, requestedClientRoleNames);
+            synchronizeClientRoleAssociation(createdUserResource, realmResource, requestedClient, requestedClientRoleNames);
             return createdUserResource;
         }
 
         UserResource existingUserResource = realmResource.users().get(existingUser.getId());
         synchronizeExistingUser(existingUserResource, userDto, normalizedUsername, requestedClientId);
-        synchronizeClientRoleAssociation(existingUserResource, requestedClient, requestedClientRoleNames);
+        synchronizeClientRoleAssociation(existingUserResource, realmResource, requestedClient, requestedClientRoleNames);
         return existingUserResource;
     }
 
@@ -278,7 +482,7 @@ public class UserProvisioningService {
         representation.setFirstName(resolveKeycloakFirstName(normalizedUsername, normalizedEmail));
         representation.setLastName(resolveKeycloakLastName(normalizedUsername, normalizedEmail));
         representation.setEnabled(Boolean.TRUE.equals(userDto.isEnabled()) || userDto.isEnabled());
-        representation.setRequiredActions(new ArrayList<>());
+        representation.setRequiredActions(new ArrayList<>(List.of("UPDATE_PASSWORD")));
         representation.setAttributes(buildAssociationAttributes(requestedClientId));
 
         try (Response response = realmResource.users().create(representation)) {
@@ -387,6 +591,7 @@ public class UserProvisioningService {
      * Assicura un mapping client-level reale su Keycloak, cosi' il client richiesto compare in resource_access.
      */
     private void synchronizeClientRoleAssociation(UserResource userResource,
+                                                  RealmResource realmResource,
                                                   ClientRepresentation requestedClient,
                                                   List<String> requestedClientRoleNames) {
         if (requestedClient == null || requestedClient.getId() == null) {
@@ -397,22 +602,33 @@ public class UserProvisioningService {
                 userResource.roles().clientLevel(requestedClient.getId()).listAll())
             .orElse(List.of());
 
+        List<RoleRepresentation> clientRoles = Optional.ofNullable(
+                realmResource.clients().get(requestedClient.getId()).roles().list())
+            .orElse(List.of());
+
+        clientRoles = ensureRequestedClientRolesExist(
+                realmResource,
+                requestedClient,
+                clientRoles,
+                requestedClientRoleNames);
+
         List<RoleRepresentation> availableRoles = Optional.ofNullable(
                 userResource.roles().clientLevel(requestedClient.getId()).listAvailable())
             .orElse(List.of());
 
-        log.info("[UserProvisioningService] Verifica ruoli client per username={}, clientId={}, clientUuid={}, requestedClientRoleNames={}, currentClientRoles={}, availableClientRoles={}",
+        log.info("[UserProvisioningService] Verifica ruoli client per username={}, clientId={}, clientUuid={}, requestedClientRoleNames={}, currentClientRoles={}, clientRoles={}, availableClientRoles={}",
             userResource.toRepresentation().getUsername(),
             requestedClient.getClientId(),
             requestedClient.getId(),
             requestedClientRoleNames,
             currentClientRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList(),
+            clientRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList(),
             availableRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
 
         List<RoleRepresentation> rolesToAssign = resolveClientRolesToAssign(
                 requestedClient,
                 currentClientRoles,
-                availableRoles,
+                clientRoles,
                 requestedClientRoleNames);
         if (rolesToAssign.isEmpty()) {
             log.info("[UserProvisioningService] Nessun nuovo ruolo client da assegnare per client {} e utente corrente",
@@ -426,10 +642,71 @@ public class UserProvisioningService {
                 rolesToAssign.stream().map(RoleRepresentation::getName).toList());
     }
 
+    private List<RoleRepresentation> ensureRequestedClientRolesExist(RealmResource realmResource,
+                                                                     ClientRepresentation requestedClient,
+                                                                     List<RoleRepresentation> clientRoles,
+                                                                     List<String> requestedClientRoleNames) {
+        if (requestedClient == null || requestedClient.getId() == null) {
+            return Optional.ofNullable(clientRoles).orElse(List.of());
+        }
+
+        String requestedClientId = requestedClient != null ? requestedClient.getClientId() : null;
+        List<String> normalizedRequestedRoleNames = Optional.ofNullable(requestedClientRoleNames)
+                .orElse(List.of())
+                .stream()
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (normalizedRequestedRoleNames.isEmpty()) {
+            return Optional.ofNullable(clientRoles).orElse(List.of());
+        }
+
+        List<String> normalizedExistingRoleNames = Optional.ofNullable(clientRoles)
+                .orElse(List.of())
+                .stream()
+                .map(RoleRepresentation::getName)
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        List<String> missingRoleNames = normalizedRequestedRoleNames.stream()
+                .filter(roleName -> !normalizedExistingRoleNames.contains(roleName))
+                .toList();
+        if (missingRoleNames.isEmpty()) {
+            return Optional.ofNullable(clientRoles).orElse(List.of());
+        }
+
+        ClientResource clientResource = realmResource.clients().get(requestedClient.getId());
+        for (String missingRoleName : missingRoleNames) {
+            RoleRepresentation roleRepresentation = new RoleRepresentation();
+            roleRepresentation.setName(missingRoleName);
+            roleRepresentation.setDescription(missingRoleName);
+
+            try {
+                clientResource.roles().create(roleRepresentation);
+            } catch (Exception exception) {
+                throw new ResponseStatusException(
+                        BAD_REQUEST,
+                        "Impossibile creare il ruolo client Keycloak " + missingRoleName
+                                + " per client " + requestedClientId,
+                        exception);
+            }
+
+            log.info("[UserProvisioningService] Ruolo client Keycloak creato o gia' esistente: clientId={}, roleName={}",
+                    requestedClientId,
+                    missingRoleName);
+        }
+
+        return Optional.ofNullable(clientResource.roles().list()).orElse(List.of());
+    }
+
     private List<RoleRepresentation> resolveClientRolesToAssign(ClientRepresentation requestedClient,
                                                                 List<RoleRepresentation> currentClientRoles,
-                                                                List<RoleRepresentation> availableRoles,
+                                                                List<RoleRepresentation> clientRoles,
                                                                 List<String> requestedClientRoleNames) {
+        String requestedClientId = requestedClient != null ? requestedClient.getClientId() : null;
         List<String> normalizedRequestedRoleNames = Optional.ofNullable(requestedClientRoleNames)
                 .orElse(List.of())
                 .stream()
@@ -438,32 +715,32 @@ public class UserProvisioningService {
                 .toList();
 
             log.info("[UserProvisioningService] Risoluzione ruoli per client {}: normalizedRequestedRoleNames={}, currentRoleNames={}, availableRoleNames={}",
-                requestedClient != null ? requestedClient.getClientId() : null,
+            requestedClientId,
                 normalizedRequestedRoleNames,
                 Optional.ofNullable(currentClientRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList(),
-                Optional.ofNullable(availableRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
+                Optional.ofNullable(clientRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
 
         if (!normalizedRequestedRoleNames.isEmpty()) {
-            List<RoleRepresentation> explicitRoles = findMatchingRoles(availableRoles, normalizedRequestedRoleNames);
+            List<RoleRepresentation> explicitRoles = findMatchingRoles(clientRoles, normalizedRequestedRoleNames);
             if (explicitRoles.isEmpty()) {
                 List<RoleRepresentation> alreadyAssignedExplicitRoles = findMatchingRoles(currentClientRoles, normalizedRequestedRoleNames);
                 if (!alreadyAssignedExplicitRoles.isEmpty()) {
                     log.info("[UserProvisioningService] I ruoli client richiesti sono gia' assegnati al client {}: {}",
-                            requestedClient.getClientId(),
+                    requestedClientId,
                             alreadyAssignedExplicitRoles.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
                     return List.of();
                 }
 
                 log.error("[UserProvisioningService] Nessun ruolo client esplicito trovato: clientId={}, requestedRoleNamesOriginal={}, requestedRoleNamesNormalized={}, availableRoleNames={}",
-                    requestedClient.getClientId(),
+                requestedClientId,
                     requestedClientRoleNames,
                     normalizedRequestedRoleNames,
-                    Optional.ofNullable(availableRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
+                    Optional.ofNullable(clientRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
                 throw new ResponseStatusException(
                         BAD_REQUEST,
-                        "Ruolo client Keycloak non trovato per client " + requestedClient.getClientId()
+                "Ruolo client Keycloak non trovato per client " + requestedClientId
                                 + ": richiesto uno tra " + normalizedRequestedRoleNames
-                                + ", disponibili " + availableRoles.stream()
+                        + ", disponibili " + Optional.ofNullable(clientRoles).orElse(List.of()).stream()
                                         .map(RoleRepresentation::getName)
                                         .filter(Objects::nonNull)
                                         .toList());
@@ -472,25 +749,23 @@ public class UserProvisioningService {
             return excludeAlreadyAssignedRoles(explicitRoles, currentClientRoles);
         }
 
-        if (availableRoles == null || availableRoles.isEmpty()) {
+        if (clientRoles == null || clientRoles.isEmpty()) {
             return List.of();
         }
 
-        List<String> preferredRoleNames = Stream.concat(
-                Stream.of(Optional.ofNullable(requestedClient.getDefaultRoles()).orElse(new String[0])),
-                Stream.of("user", "default", "access", requestedClient.getClientId()))
+        List<String> preferredRoleNames = Stream.of("user", "default", "access", requestedClientId)
             .filter(Objects::nonNull)
             .map(this::normalizeRoleName)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
 
-        List<RoleRepresentation> preferredRoles = findMatchingRoles(availableRoles, preferredRoleNames);
+        List<RoleRepresentation> preferredRoles = findMatchingRoles(clientRoles, preferredRoleNames);
         if (!preferredRoles.isEmpty()) {
             return excludeAlreadyAssignedRoles(preferredRoles, currentClientRoles);
         }
 
-        List<RoleRepresentation> nonPrivilegedRoles = availableRoles.stream()
+        List<RoleRepresentation> nonPrivilegedRoles = clientRoles.stream()
                 .filter(Objects::nonNull)
                 .filter(role -> isLikelyAssociationRole(role.getName()))
                 .toList();
@@ -610,14 +885,35 @@ public class UserProvisioningService {
         return parts.toString();
     }
 
-    private void applyPasswordWithoutRequiredChange(UserResource userResource, String generatedPassword) {
+    /**
+     * Imposta sempre una password temporanea e registra l'azione UPDATE_PASSWORD affinche' il primo accesso passi dal cambio password applicativo.
+     */
+    private void applyPassword(UserResource userResource, String generatedPassword) {
         CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
         credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
         credentialRepresentation.setValue(generatedPassword);
-        credentialRepresentation.setTemporary(false);
+        credentialRepresentation.setTemporary(true);
         userResource.resetPassword(credentialRepresentation);
+        requirePasswordUpdate(userResource);
+    }
 
-        sanitizeUserForDirectGrant(userResource);
+    /**
+     * Mantiene l'azione richiesta di cambio password al primo accesso, preservando i metadati utente necessari.
+     */
+    private void requirePasswordUpdate(UserResource userResource) {
+        UserRepresentation representation = userResource.toRepresentation();
+        boolean changed = synchronizeUserMetadata(representation);
+
+        List<String> requiredActions = new ArrayList<>(Optional.ofNullable(representation.getRequiredActions()).orElse(List.of()));
+        if (!requiredActions.contains("UPDATE_PASSWORD")) {
+            requiredActions.add("UPDATE_PASSWORD");
+            representation.setRequiredActions(requiredActions);
+            changed = true;
+        }
+
+        if (changed) {
+            userResource.update(representation);
+        }
     }
 
     /**
@@ -635,6 +931,16 @@ public class UserProvisioningService {
             representation.setRequiredActions(requiredActions);
             changed = true;
         }
+
+        changed = synchronizeUserMetadata(representation) || changed;
+
+        if (changed) {
+            userResource.update(representation);
+        }
+    }
+
+    private boolean synchronizeUserMetadata(UserRepresentation representation) {
+        boolean changed = false;
 
         boolean shouldVerifyEmail = normalizeNullable(representation.getEmail()) != null;
         if (shouldVerifyEmail && !Boolean.TRUE.equals(representation.isEmailVerified())) {
@@ -656,9 +962,7 @@ public class UserProvisioningService {
             changed = true;
         }
 
-        if (changed) {
-            userResource.update(representation);
-        }
+        return changed;
     }
 
     String resolveKeycloakFirstName(String username, String email) {
@@ -744,6 +1048,7 @@ public class UserProvisioningService {
         entity.setStructureId(userDto.getStructureId());
         entity.setRole(findRoleById(userDto.getRoleId()));
         entity.setPasswordHash(generatedPassword);
+        entity.setDataFineValiditaPassword(LocalDate.now().plusMonths(PASSWORD_VALIDITY_MONTHS));
         return userRepository.save(entity);
     }
 

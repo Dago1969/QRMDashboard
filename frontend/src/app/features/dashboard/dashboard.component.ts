@@ -4,9 +4,10 @@ import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
+import { catchError, forkJoin, of } from 'rxjs';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
 
-import { AuthService, DashboardResponse, DashboardUserProject } from '../../core/auth.service';
+import { AuthService, DashboardResponse, DashboardUserProject, TenantInfo } from '../../core/auth.service';
 
 /**
  * Dashboard protetta che mostra dati utente ottenuti da endpoint backend autenticato.
@@ -19,6 +20,8 @@ import { AuthService, DashboardResponse, DashboardUserProject } from '../../core
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  private static readonly technicalClientCodes = new Set(['account']);
+
   message = '';
   username = '';
   subject = '';
@@ -49,32 +52,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.authService.getDashboardData().subscribe({
-      next: (response: DashboardResponse) => {
-        this.showSuccessMessage(response.message);
-        this.username = response.username;
-        this.applyJwtDebugInfo(response);
-        this.userProjects = Array.isArray(response.userProjects) ? response.userProjects : [];
-
-        // Raggruppa per tenantCode e tenantName
-        const grouped: { [tenantKey: string]: { tenantCode: string, tenantName: string, projects: DashboardUserProject[] } } = {};
-        this.userProjects.forEach(project => {
-          const key = project.tenantId || project.tenantCode || project.tenantName || 'unknown';
-          if (!grouped[key]) {
-            grouped[key] = {
-              tenantCode: project.tenantCode || '',
-              tenantName: project.tenantName || '',
-              projects: []
-            };
-          }
-          grouped[key].projects.push(project);
-        });
-        this.groupedProjects = Object.values(grouped);
-
-        // Log per debug
-        this.groupedProjects.forEach((group, idx) => {
-          console.log(`[SUPERBOX ${idx}] tenantName:`, group.tenantName, '| tenantCode:', group.tenantCode, '| progetti:', group.projects.length);
-        });
+    forkJoin({
+      dashboard: this.authService.getDashboardData(),
+      tenants: this.authService.getAllTenants().pipe(catchError(() => of([])))
+    }).subscribe({
+      next: ({ dashboard, tenants }) => {
+        this.showSuccessMessage(dashboard.message);
+        this.username = dashboard.username;
+        this.applyJwtDebugInfo(dashboard);
+        this.userProjects = Array.isArray(dashboard.userProjects) ? dashboard.userProjects : [];
+        this.groupedProjects = this.buildGroupedProjects(this.userProjects, tenants);
+        this.cdr.detectChanges();
       },
       error: () => {
         this.showErrorMessage(this.t('dashboard.error.invalidToken'));
@@ -106,22 +94,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.authService.resolveTenantAppUrl(client).subscribe({
       next: (resolution) => {
-        this.authService.validateTenantRole(role).subscribe({
-          next: () => {
-            const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
-            targetUrl.searchParams.set('token', token);
-            targetUrl.searchParams.set('client', client);
-            targetUrl.searchParams.set('role', role);
-            // Passa project solo se valorizzato
-            if (project !== undefined && project !== null && project !== '') {
-              targetUrl.searchParams.set('project', project);
-            }
-            window.location.href = targetUrl.toString();
-          },
-          error: (error: HttpErrorResponse) => {
-            this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
-          }
-        });
+        const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
+        targetUrl.searchParams.set('token', token);
+        targetUrl.searchParams.set('client', client);
+        targetUrl.searchParams.set('role', role);
+        if (project !== undefined && project !== null && project !== '') {
+          targetUrl.searchParams.set('project', project);
+        }
+        window.location.href = targetUrl.toString();
       },
       error: (error: HttpErrorResponse) => {
         this.showErrorMessage(this.getTenantResolutionErrorMessage(error, role, client));
@@ -316,6 +296,93 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return atob(padded);
   }
 
+  private buildGroupedProjects(
+    userProjects: DashboardUserProject[],
+    tenants: TenantInfo[]
+  ): Array<{ tenantCode: string, tenantName: string, projects: DashboardUserProject[] }> {
+    const allowedClientCodes = this.extractAllowedClientCodes();
+    const filteredProjects = userProjects.filter((project) => {
+      const tenantCode = project.tenantCode?.trim();
+      return tenantCode ? allowedClientCodes.has(tenantCode) : false;
+    });
+
+    const projectsByTenant = filteredProjects.reduce<Record<string, DashboardUserProject[]>>((accumulator, project) => {
+      const tenantCode = project.tenantCode?.trim();
+      if (!tenantCode) {
+        return accumulator;
+      }
+
+      const currentProjects = accumulator[tenantCode] ?? [];
+      accumulator[tenantCode] = [...currentProjects, project];
+      return accumulator;
+    }, {});
+
+    const fallbackTenants = Object.entries(projectsByTenant).map(([tenantCode, projects]) => ({
+      id: projects[0]?.tenantId ?? 0,
+      clientCode: tenantCode,
+      clientName: projects[0]?.tenantName ?? tenantCode,
+      enabled: true,
+      tenantAppUrl: ''
+    }));
+
+    const effectiveTenants = (tenants.length > 0 ? tenants : fallbackTenants)
+      .filter((tenant) => tenant.enabled)
+      .filter((tenant) => allowedClientCodes.has(tenant.clientCode));
+
+    return effectiveTenants.map((tenant) => ({
+      tenantCode: tenant.clientCode,
+      tenantName: tenant.clientName,
+      projects: this.resolveTenantProjects(tenant, projectsByTenant[tenant.clientCode] ?? [])
+    }));
+  }
+
+  private resolveTenantProjects(tenant: TenantInfo, projects: DashboardUserProject[]): DashboardUserProject[] {
+    const uniqueProjects = projects.filter((project, index, source) => {
+      const currentKey = this.buildProjectIdentity(project);
+      return source.findIndex((candidate) => this.buildProjectIdentity(candidate) === currentKey) === index;
+    });
+
+    if (uniqueProjects.length === 0) {
+      return [this.createSyntheticSuperAdminProject(tenant)];
+    }
+
+    const hasSpecificProjects = uniqueProjects.some((project) => !this.isSuperAdminAllProjects(project));
+    if (!hasSpecificProjects) {
+      const superAdminProject = uniqueProjects.find((project) => this.isSuperAdminAllProjects(project));
+      return superAdminProject ? [superAdminProject] : [this.createSyntheticSuperAdminProject(tenant)];
+    }
+
+    return uniqueProjects.filter((project) => !this.isSuperAdminAllProjects(project));
+  }
+
+  private buildProjectIdentity(project: DashboardUserProject): string {
+    return [
+      project.tenantCode?.trim() ?? '',
+      project.roleId?.trim() ?? '',
+      project.projectCode?.trim() ?? '',
+      project.projectId?.toString() ?? ''
+    ].join('|');
+  }
+
+  private isSuperAdminAllProjects(project: DashboardUserProject): boolean {
+    const normalizedProjectCode = project.projectCode?.trim().toUpperCase() ?? '';
+    return project.roleId === 'SUPER_ADMIN' && (normalizedProjectCode === '' || normalizedProjectCode === 'TUTTI');
+  }
+
+  private createSyntheticSuperAdminProject(tenant: TenantInfo): DashboardUserProject {
+    return {
+      userId: 0,
+      username: this.username,
+      tenantId: tenant.id,
+      tenantCode: tenant.clientCode,
+      tenantName: tenant.clientName,
+      projectCode: 'Tutti',
+      projectDescription: '',
+      superuser: true,
+      roleId: 'SUPER_ADMIN'
+    };
+  }
+
   private groupProjectsByClient(userProjects: DashboardUserProject[]): Map<string, DashboardUserProject[]> {
     return userProjects
       .filter((project) => Boolean(project.tenantCode && project.projectCode))
@@ -333,6 +400,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         return projectsByClient;
       }, new Map<string, DashboardUserProject[]>());
+  }
+
+  private extractAllowedClientCodes(): Set<string> {
+    const resourceAccess = this.decodedClaims?.['resource_access'];
+    if (!resourceAccess || typeof resourceAccess !== 'object' || Array.isArray(resourceAccess)) {
+      return new Set();
+    }
+
+    return new Set(
+      Object.keys(resourceAccess)
+        .map((clientCode) => clientCode.trim())
+        .filter((clientCode) => clientCode.length > 0)
+        .filter((clientCode) => !DashboardComponent.technicalClientCodes.has(clientCode))
+    );
   }
 
   /**

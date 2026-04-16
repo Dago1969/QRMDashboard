@@ -5,10 +5,10 @@
       <button class="btn btn-danger" (click)="logout()">{{ t('dashboard.action.logout') }}</button>
     </div>
 
-    <!-- Link rapido a test servizi QTMPatients -->
+    <!-- Link rapido alla gestione pazienti integrata in QTMDB -->
     <div style="margin: 1em 0;">
-      <a routerLink="/patients-tester" class="btn btn-success">
-        🔬 {{ t('dashboard.menu.patientsTester') }}
+      <a routerLink="/patients/search" class="btn btn-success">
+        {{ t('dashboard.menu.patients') }}
       </a>
     </div>
 

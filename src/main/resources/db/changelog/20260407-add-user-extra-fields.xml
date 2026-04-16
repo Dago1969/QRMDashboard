@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260407-utente-extra-fields" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <and>
+                    <columnExists tableName="users" columnName="telefono"/>
+                    <columnExists tableName="users" columnName="codice_fiscale"/>
+                    <columnExists tableName="users" columnName="data_fine_validita_password"/>
+                    <columnExists tableName="users" columnName="canale_otp"/>
+                </and>
+            </not>
+        </preConditions>
+        <comment>Aggiunta campi telefono, codice fiscale, data fine validità password, canale OTP a users</comment>
+        <addColumn tableName="users">
+            <column name="telefono" type="varchar(32)"/>
+            <column name="codice_fiscale" type="varchar(32)"/>
+            <column name="data_fine_validita_password" type="date"/>
+            <column name="canale_otp" type="varchar(32)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Mantiene compatibilita con il changeset legacy gia eseguito. -->
+    <changeSet id="20260411-initial-schema" author="copilot">
+        <validCheckSum>ANY</validCheckSum>
+        <comment>Compatibility placeholder for the legacy initial schema changeset.</comment>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+    <!-- Changelog iniziale idempotente: crea ogni tabella solo se non esiste gia. -->
+    <changeSet id="20260411-initial-schema-tenant-app-pointer" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tenant_app_pointer"/>
+            </not>
+        </preConditions>
+        <createTable tableName="tenant_app_pointer">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="client_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tenant_app_url" type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="tenant_app_pointer" columnNames="client_code" constraintName="uk_tenant_app_pointer_client_code"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-roles" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="roles"/>
+            </not>
+        </preConditions>
+        <createTable tableName="roles">
+            <column name="id" type="VARCHAR(255)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tenant_id" type="BIGINT"/>
+        </createTable>
+        <addUniqueConstraint tableName="roles" columnNames="name" constraintName="uk_roles_name"/>
+        <addForeignKeyConstraint baseTableName="roles" baseColumnNames="tenant_id" constraintName="fk_roles_tenant" referencedTableName="tenant_app_pointer" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-users" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="users"/>
+            </not>
+        </preConditions>
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="VARCHAR(100)"/>
+            <column name="structure_id" type="BIGINT"/>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="password_hash" type="VARCHAR(255)"/>
+            <column name="telefono" type="VARCHAR(32)"/>
+            <column name="codice_fiscale" type="VARCHAR(32)"/>
+            <column name="data_fine_validita_password" type="DATE"/>
+            <column name="canale_otp" type="VARCHAR(32)"/>
+            <column name="password_reset_token" type="VARCHAR(255)"/>
+            <column name="password_reset_token_expiry" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="users" baseColumnNames="role_id" constraintName="fk_users_role" referencedTableName="roles" referencedColumnNames="id"/>
+        <addUniqueConstraint tableName="users" columnNames="password_reset_token" constraintName="uk_users_password_reset_token"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-country" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="country"/>
+            </not>
+        </preConditions>
+        <createTable tableName="country">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sigla_nazione" type="VARCHAR(6)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="codice_belfiore" type="VARCHAR(8)"/>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="denominazione_cittadinanza" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="country" columnNames="codice_belfiore" constraintName="uk_country_codice_belfiore"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-region" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="region"/>
+            </not>
+        </preConditions>
+        <createTable tableName="region">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="ripartizione_geografica" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="codice_regione" type="VARCHAR(4)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tipologia_regione" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numero_province" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numero_comuni" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="superficie_kmq" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="country_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="region" baseColumnNames="country_id" constraintName="fk_region_country" referencedTableName="country" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-province" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="province"/>
+            </not>
+        </preConditions>
+        <createTable tableName="province">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sigla_provincia" type="VARCHAR(4)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tipologia_provincia" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numero_comuni" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="superficie_kmq" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="codice_sovracomunale" type="VARCHAR(6)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="region_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="province" baseColumnNames="region_id" constraintName="fk_province_region" referencedTableName="region" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-city" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="city"/>
+            </not>
+        </preConditions>
+        <createTable tableName="city">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="codice_istat" type="VARCHAR(12)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="denominazione_ita_altra" type="VARCHAR(191)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(191)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cap" type="VARCHAR(16)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+            <column name="denominazione_altra" type="VARCHAR(191)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+            <column name="flag_capoluogo" type="VARCHAR(4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="codice_belfiore" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lat" type="DECIMAL(13,7)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lon" type="DECIMAL(13,7)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="superficie_kmq" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="codice_sovracomunale" type="VARCHAR(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="province_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="city" baseColumnNames="province_id" constraintName="fk_city_province" referencedTableName="province" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-structures" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="structures"/>
+            </not>
+        </preConditions>
+        <createTable tableName="structures">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="address" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN"/>
+            <column name="city" type="VARCHAR(255)"/>
+            <column name="code" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="parent_structure_id" type="BIGINT"/>
+            <column name="phone" type="VARCHAR(255)"/>
+            <column name="province" type="VARCHAR(255)"/>
+            <column name="region" type="VARCHAR(255)"/>
+            <column name="structure_type" type="VARCHAR(255)"/>
+            <column name="city_id" type="BIGINT"/>
+            <column name="province_id" type="BIGINT"/>
+            <column name="region_id" type="BIGINT"/>
+            <column name="project" type="VARCHAR(255)"/>
+            <column name="project_id" type="BIGINT"/>
+            <column name="cap" type="VARCHAR(255)"/>
+            <column name="referent_id" type="BIGINT"/>
+            <column name="service_calendar_hours" type="VARCHAR(255)"/>
+        </createTable>
+        <addUniqueConstraint tableName="structures" columnNames="code" constraintName="uk_structures_code"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-mail-template" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="mail_template"/>
+            </not>
+        </preConditions>
+        <createTable tableName="mail_template">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="language" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject" type="VARCHAR(256)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="body" type="CLOB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_update" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="mail_template" columnNames="code,language" constraintName="uk_mail_template_code_language"/>
+        <createIndex tableName="mail_template" indexName="idx_mail_template_code_lang">
+            <column name="code"/>
+            <column name="language"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-projects" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="projects"/>
+            </not>
+        </preConditions>
+        <createTable tableName="projects">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="descrizione" type="VARCHAR(1024)"/>
+            <column name="logo" type="VARCHAR(1024)"/>
+            <column name="footer" type="TEXT"/>
+            <column name="email_sender" type="VARCHAR(255)"/>
+            <column name="data_inizio" type="DATE"/>
+            <column name="data_fine" type="DATE"/>
+            <column name="administrators_json" type="TEXT"/>
+            <column name="role_ids_json" type="TEXT"/>
+            <column name="enabled_module_codes_json" type="TEXT"/>
+            <column name="tenant_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="projects" baseColumnNames="tenant_id" constraintName="fk_projects_tenant" referencedTableName="tenant_app_pointer" referencedColumnNames="id"/>
+        <addUniqueConstraint tableName="projects" columnNames="code,tenant_id" constraintName="uk_projects_code_tenant"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-user-role-project" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="user_role_project"/>
+            </not>
+        </preConditions>
+        <createTable tableName="user_role_project">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tenant_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="user_role_project" columnNames="user_id,tenant_id,role_id,project_id" constraintName="pk_user_role_project"/>
+    </changeSet>
+
+    <changeSet id="20260411-initial-schema-user-tenant-project" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="user_tenant_project"/>
+            </not>
+        </preConditions>
+        <createTable tableName="user_tenant_project">
+            <column name="tenant_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="superuser" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)"/>
+        </createTable>
+        <addPrimaryKey tableName="user_tenant_project" columnNames="tenant_id,user_id,project_id" constraintName="pk_user_tenant_project"/>
+        <addForeignKeyConstraint baseTableName="user_tenant_project" baseColumnNames="tenant_id" constraintName="fk_utp_tenant" referencedTableName="tenant_app_pointer" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="user_tenant_project" baseColumnNames="user_id" constraintName="fk_utp_user" referencedTableName="users" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="user_tenant_project" baseColumnNames="project_id" constraintName="fk_utp_project" referencedTableName="projects" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

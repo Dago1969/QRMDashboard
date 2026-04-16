@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260414-01-create-patients-table" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="patients"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="patients">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="assisted_id" type="VARCHAR(64)"/>
+            <column name="first_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fiscal_code" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="primary_phone" type="VARCHAR(64)"/>
+            <column name="secondary_phone" type="VARCHAR(64)"/>
+            <column name="region_id" type="BIGINT"/>
+            <column name="region" type="VARCHAR(255)"/>
+            <column name="province_id" type="BIGINT"/>
+            <column name="province" type="VARCHAR(255)"/>
+            <column name="city_id" type="BIGINT"/>
+            <column name="city" type="VARCHAR(255)"/>
+            <column name="delivery_address" type="VARCHAR(1000)"/>
+            <column name="secondary_addresses" type="VARCHAR(2000)"/>
+            <column name="communication_channels" type="VARCHAR(1000)"/>
+            <column name="identification_document_reference" type="VARCHAR(2000)"/>
+            <column name="data_processing_consent" type="BOOLEAN"/>
+            <column name="data_processing_consent_datetime" type="TIMESTAMP"/>
+            <column name="data_processing_consent_revocation_log" type="VARCHAR(4000)"/>
+            <column name="additional_consents" type="VARCHAR(2000)"/>
+            <column name="therapy_status" type="VARCHAR(255)"/>
+            <column name="prescribing_specialist" type="VARCHAR(255)"/>
+            <column name="reference_hospital_structure" type="VARCHAR(255)"/>
+            <column name="reference_pharmacy" type="VARCHAR(255)"/>
+            <column name="preferred_pickup_pharmacy" type="VARCHAR(255)"/>
+            <column name="delivery_mode" type="VARCHAR(255)"/>
+            <column name="reminder_enabled" type="BOOLEAN"/>
+            <column name="caregiver_full_name" type="VARCHAR(255)"/>
+            <column name="caregiver_phone" type="VARCHAR(64)"/>
+            <column name="preferred_contact" type="VARCHAR(255)"/>
+            <column name="structure_id" type="BIGINT"/>
+        </createTable>
+
+        <addUniqueConstraint tableName="patients" columnNames="assisted_id" constraintName="uk_patients_assisted_id"/>
+        <addUniqueConstraint tableName="patients" columnNames="fiscal_code" constraintName="uk_patients_fiscal_code"/>
+
+        <createIndex tableName="patients" indexName="idx_patients_last_name">
+            <column name="last_name"/>
+        </createIndex>
+
+        <createIndex tableName="patients" indexName="idx_patients_structure_id">
+            <column name="structure_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
