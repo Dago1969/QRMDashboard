@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Popolamento tabella roles, esclusi SUPER_ADMIN_B e SUPER_ADMIN_B1 -->
+    <changeSet id="20260417-05-insert-roles" author="qtm">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM roles
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="roles">
+            <column name="id" value="Admin_QTM"/>
+            <column name="name" value="Admin_QTM"/>
+            <column name="description" value="l’utente con privilegi gestionali all’interno della piattaforma QTM, con funzioni di configurazione e supervisione a livello di uno o più tenant (progetti). CRUD completo su anagrafiche, farmaci manuali, PT"/>
+            <column name="tenant_id" valueNumeric="NULL"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="id" value="Doctor-HospitalReferent"/>
+            <column name="name" value="Doctor-HospitalReferent"/>
+            <column name="description" value="Ospedale/reparto assegnato"/>
+            <column name="tenant_id" valueNumeric="NULL"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="id" value="Operator_QTM"/>
+            <column name="name" value="Operator_QTM"/>
+            <column name="description" value="Operator_QTM"/>
+            <column name="tenant_id" valueNumeric="NULL"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="id" value="SUPER_ADMIN"/>
+            <column name="name" value="SUPER_ADMIN"/>
+            <column name="description" value="SUPER_ADMIN"/>
+            <column name="tenant_id" valueNumeric="NULL"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="id" value="Supervisor _FO_FR"/>
+            <column name="name" value="Supervisor _FO_FR"/>
+            <column name="description" value="Farmacia ospedaliera o farmacia retail di competenza"/>
+            <column name="tenant_id" valueNumeric="NULL"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="id" value="Supervisor_ASL"/>
+            <column name="name" value="Supervisor_ASL"/>
+            <column name="description" value="YY figura di riferimento gestionale che opera all'interno della propria ASL nel contesto della piattaforma QTM."/>
+            <column name="tenant_id" valueNumeric="NULL"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
