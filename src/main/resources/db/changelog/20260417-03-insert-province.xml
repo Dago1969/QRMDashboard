@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Inserimento dati tabella province estratti dal dump reale -->
+    <changeSet id="20260417-province-insert" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM province</sqlCheck>
+        </preConditions>
+        <loadData tableName="province" file="data/province.csv" relativeToChangelogFile="true" separator="," encoding="UTF-8">
+            <column name="id"/>
+            <column name="region_id"/>
+            <column name="sigla_provincia"/>
+            <column name="name"/>
+            <column name="tipologia_provincia"/>
+            <column name="numero_comuni"/>
+            <column name="superficie_kmq"/>
+            <column name="codice_sovracomunale"/>
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

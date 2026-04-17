@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Inserimento dati tabella city estratti dal dump reale -->
+    <changeSet id="20260417-city-insert" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM city</sqlCheck>
+        </preConditions>
+        <loadData tableName="city" file="data/city.csv" relativeToChangelogFile="true" separator="," encoding="UTF-8">
+            <column name="id"/>
+            <column name="province_id"/>
+            <column name="codice_istat"/>
+            <column name="denominazione_ita_altra"/>
+            <column name="name"/>
+            <column name="denominazione_altra"/>
+            <column name="flag_capoluogo"/>
+            <column name="codice_belfiore"/>
+            <column name="lat"/>
+            <column name="lon"/>
+            <column name="superficie_kmq"/>
+            <column name="codice_sovracomunale"/>
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Inserimento dati tabella country estratti dal dump reale -->
+    <changeSet id="20260417-country-insert" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM country</sqlCheck>
+        </preConditions>
+        <loadData tableName="country" file="data/country.csv" relativeToChangelogFile="true" separator="," encoding="UTF-8">
+            <column name="id"/>
+            <column name="sigla_nazione"/>
+            <column name="codice_belfiore"/>
+            <column name="name"/>
+            <column name="denominazione_cittadinanza"/>
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

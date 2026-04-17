@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Inserimento dati tabella region estratti dal dump reale -->
+    <changeSet id="20260417-region-insert" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM region</sqlCheck>
+        </preConditions>
+        <loadData tableName="region" file="data/region.csv" relativeToChangelogFile="true" separator="," encoding="UTF-8">
+            <column name="id"/>
+            <column name="country_id"/>
+            <column name="ripartizione_geografica"/>
+            <column name="codice_regione"/>
+            <column name="name"/>
+            <column name="tipologia_regione"/>
+            <column name="numero_province"/>
+            <column name="numero_comuni"/>
+            <column name="superficie_kmq"/>
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

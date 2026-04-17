@@ -5,13 +5,10 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <include file="20260411-00-initial-schema.xml" relativeToChangelogFile="true"/>
-    <include file="20260407-add-user-extra-fields.xml" relativeToChangelogFile="true"/>
-    <include file="20260409-01-create-mail-template-table.xml" relativeToChangelogFile="true"/>
-    <include file="20260409-02-insert-mail-templates.xml" relativeToChangelogFile="true"/>
-    <include file="20260409-03-add-password-reset-token-fields.xml" relativeToChangelogFile="true"/>
-    <include file="20260409-04-update-password-recover-template.xml" relativeToChangelogFile="true"/>
-    <include file="20260411-01-seed-local-reference-data.xml" relativeToChangelogFile="true"/>
-    <include file="20260414-01-create-patients-table.xml" relativeToChangelogFile="true"/>
+    <!-- Esegue solo i nuovi caricamenti geografici richiesti. -->
+    <include file="20260417-01-insert-country.xml" relativeToChangelogFile="true"/>
+    <include file="20260417-02-insert-region.xml" relativeToChangelogFile="true"/>
+    <include file="20260417-03-insert-province.xml" relativeToChangelogFile="true"/>
+    <include file="20260417-04-insert-city.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
