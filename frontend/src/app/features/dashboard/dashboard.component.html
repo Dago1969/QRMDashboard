@@ -10,6 +10,9 @@
       <a routerLink="/patients/search" class="btn btn-success">
         {{ t('dashboard.menu.patients') }}
       </a>
+      <a routerLink="/medicines/search" class="btn btn-primary" style="margin-left: 0.75rem;">
+        {{ t('dashboard.menu.medicines') }}
+      </a>
     </div>
 
     <p *ngIf="message" class="feedback-banner feedback-banner-success" [class.feedback-banner-fade-out]="isMessageFading">

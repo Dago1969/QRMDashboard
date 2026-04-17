@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Crea la tabella farmaci in QTMDB e carica il catalogo AIC dal CSV versionato. -->
+    <changeSet id="20260417-06-create-medicines-table" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="medicines"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="medicines">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="codice_aic" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cod_farmaco" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cod_confezione" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="denominazione" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="descrizione" type="VARCHAR(1000)"/>
+            <column name="codice_ditta" type="VARCHAR(64)"/>
+            <column name="ragione_sociale" type="VARCHAR(255)"/>
+            <column name="stato_amministrativo" type="VARCHAR(255)"/>
+            <column name="tipo_procedura" type="VARCHAR(255)"/>
+            <column name="forma" type="VARCHAR(255)"/>
+            <column name="codice_atc" type="VARCHAR(64)"/>
+            <column name="pa_associati" type="TEXT"/>
+            <column name="fornitura" type="VARCHAR(1000)"/>
+            <column name="link_fi" type="VARCHAR(2048)"/>
+            <column name="link_rcp" type="VARCHAR(2048)"/>
+        </createTable>
+
+        <addUniqueConstraint tableName="medicines" columnNames="codice_aic" constraintName="uk_medicines_codice_aic"/>
+
+        <createIndex tableName="medicines" indexName="idx_medicines_cod_farmaco">
+            <column name="cod_farmaco"/>
+        </createIndex>
+
+        <createIndex tableName="medicines" indexName="idx_medicines_denominazione">
+            <column name="denominazione"/>
+        </createIndex>
+
+        <createIndex tableName="medicines" indexName="idx_medicines_codice_atc">
+            <column name="codice_atc"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20260417-06-fix-medicines-pa-associati-type" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medicines"/>
+            <columnExists tableName="medicines" columnName="pa_associati"/>
+        </preConditions>
+
+        <modifyDataType tableName="medicines" columnName="pa_associati" newDataType="TEXT"/>
+    </changeSet>
+
+    <changeSet id="20260417-06-load-medicines-data" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medicines"/>
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM medicines</sqlCheck>
+        </preConditions>
+
+        <loadData tableName="medicines"
+                  file="data/confezioni_fornitura.csv"
+                  relativeToChangelogFile="true"
+                  separator=";"
+                  encoding="UTF-8">
+            <column header="CODICE_AIC" name="codice_aic"/>
+            <column header="COD_FARMACO" name="cod_farmaco"/>
+            <column header="COD_CONFEZIONE" name="cod_confezione"/>
+            <column header="DENOMINAZIONE" name="denominazione"/>
+            <column header="DESCRIZIONE" name="descrizione"/>
+            <column header="CODICE_DITTA" name="codice_ditta"/>
+            <column header="RAGIONE_SOCIALE" name="ragione_sociale"/>
+            <column header="STATO_AMMINISTRATIVO" name="stato_amministrativo"/>
+            <column header="TIPO_PROCEDURA" name="tipo_procedura"/>
+            <column header="FORMA" name="forma"/>
+            <column header="CODICE_ATC" name="codice_atc"/>
+            <column header="PA_ASSOCIATI" name="pa_associati"/>
+            <column header="FORNITURA" name="fornitura"/>
+            <column header="LINK_FI" name="link_fi"/>
+            <column header="LINK_RCP" name="link_rcp"/>
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

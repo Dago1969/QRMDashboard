@@ -1,0 +1,85 @@
+package com.qtm.dashboard.medicine.controller;
+
+import com.qtm.commonlib.dto.MedicineDto;
+import com.qtm.dashboard.medicine.service.MedicineSearchCriteria;
+import com.qtm.dashboard.medicine.service.MedicineService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+/**
+ * Controller REST farmaci persistiti e gestiti direttamente da QTMDB.
+ */
+@RestController
+@RequestMapping("/api/medicines")
+@RequiredArgsConstructor
+public class MedicineController {
+
+    private final MedicineService medicineService;
+
+    @GetMapping
+    public ResponseEntity<List<MedicineDto>> search(
+            @RequestParam(required = false) String codiceAic,
+            @RequestParam(required = false) String codFarmaco,
+            @RequestParam(required = false) String codConfezione,
+            @RequestParam(required = false) String denominazione,
+            @RequestParam(required = false) String descrizione,
+            @RequestParam(required = false) String codiceAtc,
+            @RequestParam(required = false) String ragioneSociale,
+            @RequestParam(required = false) String statoAmministrativo
+    ) {
+        MedicineSearchCriteria criteria = new MedicineSearchCriteria(
+                codiceAic,
+                codFarmaco,
+                codConfezione,
+                denominazione,
+                descrizione,
+                codiceAtc,
+                ragioneSociale,
+                statoAmministrativo
+        );
+        return ResponseEntity.ok(medicineService.search(criteria));
+    }
+
+    @GetMapping("/lookup")
+    public ResponseEntity<List<MedicineDto>> lookup(@RequestParam(required = false) String query) {
+        return ResponseEntity.ok(medicineService.lookup(query));
+    }
+
+    @GetMapping("/codice-aic/{codiceAic}")
+    public ResponseEntity<MedicineDto> findByCodiceAic(@PathVariable String codiceAic) {
+        return ResponseEntity.ok(medicineService.findByCodiceAic(codiceAic));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<MedicineDto> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(medicineService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<MedicineDto> create(@Valid @RequestBody MedicineDto medicineDto) {
+        return ResponseEntity.ok(medicineService.create(medicineDto));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MedicineDto> update(@PathVariable Long id, @Valid @RequestBody MedicineDto medicineDto) {
+        return ResponseEntity.ok(medicineService.update(id, medicineDto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        medicineService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}

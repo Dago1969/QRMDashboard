@@ -6,6 +6,8 @@ import { PatientsTesterComponent } from './patients-tester.component';
 import { ChangePasswordComponent } from './shared/change-password/change-password.component';
 import { PatientsSearchComponent } from './features/patients-search/patients-search.component';
 import { PatientsCrudComponent } from './features/patients/patients-crud.component';
+import { MedicinesSearchComponent } from './features/medicines-search/medicines-search.component';
+import { MedicinesCrudComponent } from './features/medicines/medicines-crud.component';
 
 /**
  * Definizione rotte applicative minime: login pubblico e dashboard protetta.
@@ -25,6 +27,10 @@ export const appRoutes: Routes = [
   { path: 'patients/new', component: PatientsCrudComponent, canActivate: [authGuard] },
   { path: 'patients/:id', component: PatientsCrudComponent, canActivate: [authGuard] },
   { path: 'patients/:id/view', component: PatientsCrudComponent, canActivate: [authGuard], data: { mode: 'view' } },
+  { path: 'medicines/search', component: MedicinesSearchComponent, canActivate: [authGuard] },
+  { path: 'medicines/new', component: MedicinesCrudComponent, canActivate: [authGuard] },
+  { path: 'medicines/:id', component: MedicinesCrudComponent, canActivate: [authGuard] },
+  { path: 'medicines/:id/view', component: MedicinesCrudComponent, canActivate: [authGuard], data: { mode: 'view' } },
   { path: 'patients-tester', component: PatientsTesterComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: 'login' }
 ];
