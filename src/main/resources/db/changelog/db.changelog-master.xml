@@ -14,4 +14,6 @@
     <include file="20260417-05-insert-roles.xml" relativeToChangelogFile="true"/>
     <include file="20260417-06-create-medicines-table.xml" relativeToChangelogFile="true"/>
 
+    <include file="20260419-01-add-birthdate-gender-to-patient.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

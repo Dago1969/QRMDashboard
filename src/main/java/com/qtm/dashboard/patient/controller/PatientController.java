@@ -6,6 +6,7 @@ import com.qtm.dashboard.patient.service.PatientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -35,9 +37,11 @@ public class PatientController {
             @RequestParam(required = false) String lastName,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String fiscalCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate birthDate,
+            @RequestParam(required = false) String gender,
             @RequestParam(required = false) Long structureId
     ) {
-        PatientSearchCriteria criteria = new PatientSearchCriteria(assistedId, firstName, lastName, email, fiscalCode, structureId);
+        PatientSearchCriteria criteria = new PatientSearchCriteria(assistedId, firstName, lastName, email, fiscalCode, birthDate, gender, structureId);
         return ResponseEntity.ok(patientService.search(criteria));
     }
 

@@ -12,6 +12,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import java.time.LocalDate;
+
 /**
  * Entity paziente persistita direttamente in QTMDB.
  */
@@ -28,6 +30,18 @@ public class PatientEntity {
 
     @Column(name = "assisted_id", unique = true)
     private String assistedId;
+
+    /**
+     * Data di nascita del paziente.
+     */
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    /**
+     * Sesso del paziente ('M'=maschio, 'F'=femmina).
+     */
+    @Column(name = "gender", length = 1)
+    private String gender;
 
     @Column(name = "first_name", nullable = false)
     private String firstName;

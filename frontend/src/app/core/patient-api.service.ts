@@ -10,6 +10,8 @@ export interface PatientDto {
   assistedId?: string;
   firstName: string;
   lastName: string;
+  birthDate?: string;
+  gender?: string;
   fiscalCode: string;
   email?: string;
   primaryPhone?: string;

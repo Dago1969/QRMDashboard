@@ -43,6 +43,9 @@ public class PatientMapper {
         entity.setCaregiverPhone(dto.getCaregiverPhone());
         entity.setPreferredContact(dto.getPreferredContact());
         entity.setStructureId(dto.getStructureId());
+        entity.setBirthDate(dto.getBirthDate());
+        // Sesso: 'M'=maschio, 'F'=femmina
+        entity.setGender(dto.getGender());
     }
 
     public PatientDto toDto(PatientEntity entity) {
@@ -80,6 +83,9 @@ public class PatientMapper {
         dto.setCaregiverPhone(entity.getCaregiverPhone());
         dto.setPreferredContact(entity.getPreferredContact());
         dto.setStructureId(entity.getStructureId());
+        dto.setBirthDate(entity.getBirthDate());
+        // Sesso: 'M'=maschio, 'F'=femmina
+        dto.setGender(entity.getGender());
         return dto;
     }
 

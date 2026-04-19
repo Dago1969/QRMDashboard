@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260419-01-add-birthdate-gender-to-patient" author="copilot">
+        <addColumn tableName="patients">
+            <column name="birth_date" type="DATE" remarks="Data di nascita del paziente"/>
+            <column name="gender" type="VARCHAR(1)" remarks="Sesso del paziente: 'M' = maschio, 'F' = femmina"/>
+        </addColumn>
+
+        <sql>
+            ALTER TABLE patients
+            ADD CONSTRAINT chk_patients_gender_mf
+            CHECK (gender IS NULL OR gender IN ('M', 'F'))
+        </sql>
+
+        <rollback>
+            ALTER TABLE patients DROP CHECK chk_patients_gender_mf
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
