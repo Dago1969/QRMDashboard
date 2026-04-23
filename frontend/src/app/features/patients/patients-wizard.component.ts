@@ -122,20 +122,7 @@ interface FormFolder {
         </button>
       </div>
     </qtm-step-modal>
-  `,
-  styles: [
-    `
-      .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-      .form-grid label { display: grid; gap: 6px; font-weight: 600; }
-      .form-grid input, .form-grid select { border: 1px solid #d6deea; border-radius: 10px; padding: 10px 12px; }
-      .checkbox-input { width: 20px; height: 20px; }
-      .primary-btn, .secondary-btn { border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; }
-      .primary-btn { background: #2f67c7; color: #fff; }
-      .secondary-btn { background: #e8edf6; color: #142033; }
-      .message-box { margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; background: #e9f7ef; color: #1d6b3b; }
-      .message-box-error { background: #fdecec; color: #b42318; }
-    `
-  ]
+  `
 })
 export class PatientsWizardComponent implements OnInit, OnDestroy {
   @Input() patientIdInput: number | null = null;
