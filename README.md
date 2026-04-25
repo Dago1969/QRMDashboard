@@ -78,26 +78,8 @@ mvn spring-boot:run
 
 Backend disponibile su `http://localhost:8086`.
 
-## Avvio con Docker
-
-Il `docker-compose.yml` imposta gia `QTMDB_ENV=collaudo` per il backend, mentre all'interno della rete Docker il datasource viene forzato correttamente su `mysql:3306`.
-
-Build immagine:
-
-```bash
-mvn clean package -DskipTests
 docker build -t qtm-dashboard .
-```
-
-Run container usando i servizi esposti sulla macchina host:
-
-```bash
 docker run --rm -p 8086:8086 qtm-dashboard
-```
-
-Se MySQL o Keycloak non sono raggiungibili tramite `host.docker.internal`, sovrascrivere le variabili d'ambiente al run:
-
-```bash
 docker run --rm -p 8086:8086 \
 	-e SPRING_DATASOURCE_URL="jdbc:mysql://<db-host>:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" \
 	-e SPRING_DATASOURCE_USERNAME=root \
@@ -107,18 +89,58 @@ docker run --rm -p 8086:8086 \
 	-e APP_KEYCLOAK_TOKEN_URL="http://<keycloak-host>:8085/realms/QTM/protocol/openid-connect/token" \
 	-e APP_CORS_ALLOWED_ORIGINS="http://localhost:4200,http://127.0.0.1:4200" \
 	qtm-dashboard
+
+## Avvio con Docker Compose (FE/BE separati)
+
+Dal 2026-04-24 il progetto è suddiviso in compose separati per backend e frontend:
+
+- `docker-compose.backend.yml` → backend Spring Boot + MySQL
+- `docker-compose.frontend.yml` → solo frontend Angular
+
+### Build e pulizia immagini
+
+Per eliminare tutte le vecchie immagini Docker di QRMDashboard:
+
+```bash
+docker image rm qtmdashboard-backend qtmdashboard-frontend qtmdashboard-mysql || true
 ```
 
-Nota: su Linux `host.docker.internal` potrebbe non essere risolto automaticamente. Se Keycloak gira in un altro container Docker, collega QTMDB alla stessa rete e usa come host il nome del container Keycloak nelle variabili `APP_KEYCLOAK_SERVER_URL`, `APP_KEYCLOAK_TOKEN_URL` e `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI`.
+Per buildare e pubblicare le nuove immagini:
 
-Nota: se MySQL gira sulla macchina host ma accetta connessioni solo da `localhost`, il container non potra collegarsi finche il server MySQL non viene configurato per ascoltare anche su un indirizzo raggiungibile dal container.
+```bash
+# Backend (da QRMDashboard)
+docker compose -f docker-compose.backend.yml build
+docker compose -f docker-compose.backend.yml up -d
 
-Endpoint principali:
+# Frontend (da QRMDashboard)
+docker compose -f docker-compose.frontend.yml build
+docker compose -f docker-compose.frontend.yml up -d
+```
 
-- `POST /api/auth/login`
-- `POST /api/auth/register`
-- `GET /api/users` (protetto)
-- `GET /api/users/dashboard` (protetto)
+### Avvio backend standalone
+
+```bash
+docker compose -f docker-compose.backend.yml up -d
+```
+Backend disponibile su `http://localhost:8086`
+
+### Avvio frontend standalone
+
+```bash
+docker compose -f docker-compose.frontend.yml up -d
+```
+Frontend disponibile su `http://localhost:4200`
+
+### Note reti
+
+Entrambi i compose usano la rete `qtm-network` e, per il backend, anche la rete esterna `keycloak-net`.
+Se usi Keycloak in Docker, assicurati che la rete `keycloak-docker_default` sia presente e collegata.
+
+### Esempio di flusso
+
+1. Avvia backend: `docker compose -f docker-compose.backend.yml up -d`
+2. Avvia frontend: `docker compose -f docker-compose.frontend.yml up -d`
+3. Accedi a `http://localhost:4200` per la dashboard
 
 ## Avvio frontend
 

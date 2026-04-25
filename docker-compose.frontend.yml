@@ -1,17 +1,16 @@
 services:
-  qrm-frontend:
-    image: qrm-dashboard-frontend:latest
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: qrm-frontend
+    container_name: qtmdashboard-frontend
     ports:
       - "4200:80"
-    # Se vuoi servire su una porta diversa, modifica qui
-    # volumes:
-    #   - ./frontend/dist/qtm-dashboard-frontend/browser:/usr/share/nginx/html:ro
-    restart: unless-stopped
+    # Il backend deve essere avviato separatamente
+    restart: always
+    networks:
+      - qtm-network
 
-# Questo file docker-compose è pensato per avviare solo il frontend Angular statico tramite nginx.
-# Assicurati che il Dockerfile sia presente in ./frontend e che esponga la porta 80.
-# Puoi personalizzare la porta host (4200) secondo necessità.
+networks:
+  qtm-network:
+    driver: bridge
