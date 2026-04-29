@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import intlTelInput, { type AllOptions, type Iti } from 'intl-tel-input';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -58,6 +59,14 @@ interface FormFolder {
   fields: FormField[];
 }
 
+interface PhoneInputBinding {
+  fieldKey: keyof PatientFormModel;
+  input: HTMLInputElement;
+  iti: Iti;
+  syncValue: () => void;
+  cleanup: () => void;
+}
+
 /**
  * Form paziente per creazione, modifica e consultazione dentro QTMDB.
  */
@@ -94,14 +103,32 @@ interface FormFolder {
         <label *ngFor="let field of activeFields">
           <span>{{ t(field.labelKey) }}</span>
 
-          <input
-            *ngIf="field.type !== 'checkbox'"
-            [type]="field.type"
-            [(ngModel)]="model[field.key]"
-            [name]="getFieldName(field)"
-            [readonly]="field.readonly || isViewMode"
-            [disabled]="field.readonly || isViewMode"
-          />
+          <div *ngIf="isPhoneField(field); else defaultField" class="phone-input-group-intl" [class.phone-field-invalid]="shouldShowPhoneRequiredError(field)">
+            <input
+              #phoneInputElement
+              class="phone-number-input"
+              type="tel"
+              [attr.data-phone-field-key]="field.key"
+              [name]="getFieldName(field)"
+              [disabled]="field.readonly || isViewMode"
+              (blur)="onPhoneFieldBlur(field)"
+            />
+          </div>
+
+          <ng-template #defaultField>
+            <input
+              *ngIf="field.type !== 'checkbox'"
+              [type]="field.type"
+              [(ngModel)]="model[field.key]"
+              [name]="getFieldName(field)"
+              [readonly]="field.readonly || isViewMode"
+              [disabled]="field.readonly || isViewMode"
+            />
+          </ng-template>
+
+          <small *ngIf="shouldShowPhoneRequiredError(field)" class="field-error">
+            {{ t('crud.validation.required') }}
+          </small>
 
           <input
             *ngIf="field.type === 'checkbox'"
@@ -125,7 +152,10 @@ interface FormFolder {
     </section>
   `
 })
-export class PatientsCrudComponent implements OnInit, OnDestroy {
+export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
+  readonly defaultPhoneCountryIsoCode = 'it';
+  readonly phoneCountryOrder: NonNullable<AllOptions['countryOrder']> = ['it', 'us', 'gb', 'fr', 'de', 'es'];
+  readonly loadPhoneInputUtils = () => import('intl-tel-input/utils');
   readonly folders: FormFolder[] = [
     {
       key: 'identity',
@@ -188,6 +218,10 @@ export class PatientsCrudComponent implements OnInit, OnDestroy {
   translations: Record<string, string> = {};
   private messageTimeoutId: number | null = null;
   private readonly subscriptions = new Subscription();
+  phoneFieldTouched: Partial<Record<keyof PatientFormModel, boolean>> = {};
+  @ViewChildren('phoneInputElement') phoneInputElements!: QueryList<ElementRef<HTMLInputElement>>;
+  private phoneInputChangesSubscription?: Subscription;
+  private phoneInputBindings = new Map<keyof PatientFormModel, PhoneInputBinding>();
 
   constructor(
     private readonly http: HttpClient,
@@ -219,9 +253,21 @@ export class PatientsCrudComponent implements OnInit, OnDestroy {
     );
   }
 
+  ngAfterViewInit(): void {
+    this.syncPhoneInputs();
+    this.phoneInputChangesSubscription = this.phoneInputElements.changes.subscribe(() => {
+      this.syncPhoneInputs();
+    });
+  }
+
   ngOnDestroy(): void {
     this.clearMessageTimer();
     this.subscriptions.unsubscribe();
+    this.phoneInputChangesSubscription?.unsubscribe();
+    for (const binding of this.phoneInputBindings.values()) {
+      binding.cleanup();
+    }
+    this.phoneInputBindings.clear();
   }
 
   get activeFields(): FormField[] {
@@ -236,7 +282,25 @@ export class PatientsCrudComponent implements OnInit, OnDestroy {
     return String(field.key);
   }
 
+  isPhoneField(field: FormField): boolean {
+    return field.type === 'text' && field.key.toLowerCase().includes('phone');
+  }
+
+  onPhoneFieldBlur(field: FormField): void {
+    this.phoneFieldTouched[field.key] = true;
+  }
+
+  shouldShowPhoneRequiredError(field: FormField): boolean {
+    if (!this.isPhoneField(field) || this.isViewMode) {
+      return false;
+    }
+
+    const value = this.model[field.key];
+    return this.phoneFieldTouched[field.key] === true && typeof value === 'string' && value.trim().length === 0;
+  }
+
   save(): void {
+    this.markPhoneFieldsTouched();
     const payload = this.toPayload();
     const request = this.patientId === null
       ? this.http.post(PATIENTS_API_URL, payload)
@@ -278,6 +342,7 @@ export class PatientsCrudComponent implements OnInit, OnDestroy {
               : '',
             structureId: patient.structureId === undefined || patient.structureId === null ? '' : String(patient.structureId)
           } as PatientFormModel;
+          this.syncPhoneInputs();
           this.loading = false;
           this.clearMessage();
         },
@@ -355,6 +420,96 @@ export class PatientsCrudComponent implements OnInit, OnDestroy {
       preferredContact: '',
       structureId: ''
     };
+  }
+
+  private markPhoneFieldsTouched(): void {
+    for (const field of this.activeFields) {
+      if (this.isPhoneField(field)) {
+        this.phoneFieldTouched[field.key] = true;
+      }
+    }
+  }
+
+  private syncPhoneInputs(): void {
+    if (!this.phoneInputElements) {
+      return;
+    }
+
+    const renderedKeys = new Set<keyof PatientFormModel>();
+
+    for (const elementRef of this.phoneInputElements.toArray()) {
+      const input = elementRef.nativeElement;
+      const rawFieldKey = input.dataset['phoneFieldKey'];
+      if (!rawFieldKey) {
+        continue;
+      }
+
+      const fieldKey = rawFieldKey as keyof PatientFormModel;
+      renderedKeys.add(fieldKey);
+
+      const existingBinding = this.phoneInputBindings.get(fieldKey);
+      if (existingBinding?.input === input) {
+        existingBinding.syncValue();
+        continue;
+      }
+
+      existingBinding?.cleanup();
+      if (existingBinding) {
+        this.phoneInputBindings.delete(fieldKey);
+      }
+
+      const iti = intlTelInput(input, {
+        initialCountry: this.defaultPhoneCountryIsoCode,
+        countryOrder: this.phoneCountryOrder,
+        nationalMode: false,
+        separateDialCode: true,
+        loadUtils: this.loadPhoneInputUtils,
+        customPlaceholder: () => ''
+      });
+
+      const syncValue = () => {
+        const phoneValue = (this.model as unknown as Record<string, unknown>)[fieldKey];
+        const normalizedValue = typeof phoneValue === 'string' ? phoneValue.trim() : '';
+        if (normalizedValue && iti.getNumber() !== normalizedValue) {
+          iti.setNumber(normalizedValue);
+        }
+        if (!normalizedValue && input.value) {
+          input.value = '';
+        }
+      };
+
+      const updateModel = () => {
+        const normalizedNumber = input.value.trim().length > 0 ? iti.getNumber() || input.value.trim() : '';
+        (this.model as unknown as Record<string, string>)[fieldKey] = normalizedNumber;
+      };
+
+      const handleCountryChange = () => {
+        updateModel();
+      };
+
+      input.addEventListener('input', updateModel);
+      input.addEventListener('countrychange', handleCountryChange);
+      syncValue();
+
+      this.phoneInputBindings.set(fieldKey, {
+        fieldKey,
+        input,
+        iti,
+        syncValue,
+        cleanup: () => {
+          input.removeEventListener('input', updateModel);
+          input.removeEventListener('countrychange', handleCountryChange);
+          iti.destroy();
+        }
+      });
+    }
+
+    for (const [fieldKey, binding] of this.phoneInputBindings.entries()) {
+      if (!renderedKeys.has(fieldKey)) {
+        binding.cleanup();
+        this.phoneInputBindings.delete(fieldKey);
+      }
+    }
   }
 
   private extractErrorMessage(error: HttpErrorResponse, fallbackKey: string): string {
