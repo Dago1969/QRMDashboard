@@ -6,6 +6,8 @@ import com.qtm.dashboard.auth.service.KeycloakAuthService;
 import com.qtm.dashboard.config.KeycloakProperties;
 import com.qtm.dashboard.mail.repository.MailTemplateRepository;
 import com.qtm.dashboard.mail.service.MailService;
+import com.qtm.dashboard.user.entity.RoleEntity;
+import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
 import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -62,6 +65,9 @@ class UserProvisioningServiceTest {
     @Mock
     private MailService mailService;
 
+        @Mock
+        private UserRoleProfileService userRoleProfileService;
+
     @Mock
     private RealmResource realmResource;
 
@@ -88,7 +94,8 @@ class UserProvisioningServiceTest {
                 keycloakProperties,
             keycloakAuthService,
             mailTemplateRepository,
-            mailService);
+                        mailService,
+                        userRoleProfileService);
 
                 lenient().when(realmResource.clients()).thenReturn(clientsResource);
                 lenient().when(clientsResource.get("client-uuid")).thenReturn(clientResource);
@@ -269,6 +276,44 @@ class UserProvisioningServiceTest {
 
         assertEquals(List.of("password"), result);
     }
+
+        @Test
+        void upsertDatabaseUserShouldSaveUserRoleProfileWhenClientAndRoleAreAvailable() throws Exception {
+                RoleEntity roleEntity = new RoleEntity();
+                roleEntity.setId("SUPER_ADMIN");
+
+                UserEntity existingUser = new UserEntity();
+                existingUser.setId(42L);
+
+                when(roleRepository.findById("SUPER_ADMIN")).thenReturn(Optional.of(roleEntity));
+                when(userRepository.save(existingUser)).thenReturn(existingUser);
+
+                com.qtm.commonlib.dto.UserDto userDto = new com.qtm.commonlib.dto.UserDto();
+                userDto.setUsername("utente.test");
+                userDto.setEmail("utente.test@example.com");
+                userDto.setEnabled(true);
+                userDto.setRoleId("SUPER_ADMIN");
+                userDto.setClientId("TENAPP");
+
+                Method method = UserProvisioningService.class.getDeclaredMethod(
+                                "upsertDatabaseUser",
+                                com.qtm.commonlib.dto.UserDto.class,
+                                String.class,
+                                String.class,
+                                UserEntity.class);
+                method.setAccessible(true);
+
+                UserEntity result = (UserEntity) method.invoke(
+                                userProvisioningService,
+                                userDto,
+                                "utente.test",
+                                "Password123!",
+                                existingUser);
+
+                assertEquals(existingUser, result);
+                verify(userRoleProfileService).saveForUser(42L, "TENAPP", "SUPER_ADMIN", null);
+                verify(userRepository).save(existingUser);
+        }
 
         @Test
         void resolveAdminClientSecretCandidatesShouldReturnDistinctOrderedSecrets() throws Exception {

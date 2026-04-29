@@ -33,6 +33,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isMessageFading = false;
   isErrorFading = false;
   translations: Record<string, string> = {};
+  private autoRedirectTriggered = false;
   private messageFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private messageClearTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private errorFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -62,6 +63,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.applyJwtDebugInfo(dashboard);
         this.userProjects = Array.isArray(dashboard.userProjects) ? dashboard.userProjects : [];
         this.groupedProjects = this.buildGroupedProjects(this.userProjects, tenants);
+        if (this.tryAutoOpenSingleDashboardBox()) {
+          return;
+        }
         this.cdr.detectChanges();
       },
       error: () => {
@@ -334,6 +338,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
       tenantName: tenant.clientName,
       projects: this.resolveTenantProjects(tenant, projectsByTenant[tenant.clientCode] ?? [])
     }));
+  }
+
+  private tryAutoOpenSingleDashboardBox(): boolean {
+    if (this.autoRedirectTriggered) {
+      return true;
+    }
+
+    const projects = this.groupedProjects.flatMap((group) => group.projects);
+    if (projects.length !== 1) {
+      return false;
+    }
+
+    const [project] = projects;
+    this.autoRedirectTriggered = true;
+    this.openTenantsDashboard(project.tenantCode || '', project.roleId || '', project.projectCode ?? undefined);
+    return true;
   }
 
   private resolveTenantProjects(tenant: TenantInfo, projects: DashboardUserProject[]): DashboardUserProject[] {

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260429-03-update-onboarding-mail-template" author="copilot">
+        <comment>Aggiorna il template onboarding con newline reali e mostra l'identificativo atteso nel campo Username.</comment>
+
+        <update tableName="mail_template">
+            <column name="body" value="Ciao ${firstName},
+
+Il tuo account è stato creato correttamente.
+Username: ${firstName}
+Password temporanea: ${password}
+Accedi qui: ${loginUrl}
+
+Per motivi di sicurezza dovrai cambiare la password al primo login.
+
+Cordiali saluti,
+Il team QTM"/>
+            <where>code = 'ONBOARDING' AND language = 'it'</where>
+        </update>
+
+        <update tableName="mail_template">
+            <column name="body" value="Hi ${firstName},
+
+Your account has been created successfully.
+Username: ${firstName}
+Temporary password: ${password}
+Login here: ${loginUrl}
+
+For security reasons, you will be required to change your password at first login.
+
+Best regards,
+The QTM Team"/>
+            <where>code = 'ONBOARDING' AND language = 'en'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

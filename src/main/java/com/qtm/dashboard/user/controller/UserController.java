@@ -4,6 +4,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 
 import com.qtm.commonlib.dto.UserDto;
+import com.qtm.dashboard.project.repository.ProjectRepository;
+import com.qtm.dashboard.tenant.repository.TenantAppPointerRepository;
+import com.qtm.dashboard.user.service.UserRoleProjectService;
 import com.qtm.dashboard.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
 /**
  * Controller REST CRUD utenti centralizzati e dati dashboard.
  */
@@ -35,19 +40,27 @@ public class UserController {
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
-    private final com.qtm.dashboard.user.service.UserTenantProjectRelationService userTenantProjectRelationService;
+    private final UserRoleProjectService userRoleProjectService;
+    private final TenantAppPointerRepository tenantPointerRepository;
+    private final ProjectRepository projectRepository;
 
-    public UserController(UserService userService, com.qtm.dashboard.user.service.UserTenantProjectRelationService userTenantProjectRelationService) {
+    public UserController(UserService userService,
+                          UserRoleProjectService userRoleProjectService,
+                          TenantAppPointerRepository tenantAppPointerRepository,
+                          ProjectRepository projectRepository) {
         this.userService = userService;
-        this.userTenantProjectRelationService = userTenantProjectRelationService;
+        this.userRoleProjectService = userRoleProjectService;
+        this.tenantPointerRepository = tenantAppPointerRepository;
+        this.projectRepository = projectRepository;
     }
 
     @PostMapping
     public ResponseEntity<UserDto> create(
             @RequestBody UserDto userDto,
-            @RequestHeader(name = "X-Selected-Client", required = false) String selectedClient
+            @RequestHeader(name = "X-Selected-Client", required = false) String selectedClient,
+            @RequestHeader(name = "X-Selected-Project", required = false) String selectedProject
     ) {
-        enrichClientId(userDto, selectedClient);
+        enrichSelectionContext(userDto, selectedClient, selectedProject);
         return ResponseEntity.ok(userService.create(userDto));
     }
 
@@ -76,23 +89,49 @@ public class UserController {
     public ResponseEntity<UserDto> update(
             @PathVariable Long id,
             @RequestBody UserDto userDto,
-            @RequestHeader(name = "X-Selected-Client", required = false) String selectedClient
+            @RequestHeader(name = "X-Selected-Client", required = false) String selectedClient,
+            @RequestHeader(name = "X-Selected-Project", required = false) String selectedProject
     ) {
-        enrichClientId(userDto, selectedClient);
+        enrichSelectionContext(userDto, selectedClient, selectedProject);
         return ResponseEntity.ok(userService.update(id, userDto));
     }
 
-    private void enrichClientId(UserDto userDto, String selectedClient) {
+    private void enrichSelectionContext(UserDto userDto, String selectedClient, String selectedProject) {
         if (userDto == null) {
             return;
         }
 
-        if (userDto.getClientId() != null && !userDto.getClientId().isBlank()) {
-            return;
+        if ((userDto.getClientId() == null || userDto.getClientId().isBlank())
+                && selectedClient != null
+                && !selectedClient.isBlank()) {
+            userDto.setClientId(selectedClient.trim());
         }
 
-        if (selectedClient != null && !selectedClient.isBlank()) {
-            userDto.setClientId(selectedClient.trim());
+        if (userDto.getProjectId() == null && selectedProject != null && !selectedProject.isBlank()) {
+            userDto.setProjectId(resolveProjectId(userDto.getClientId(), selectedProject));
+        }
+    }
+
+    private Long resolveProjectId(String clientId, String selectedProject) {
+        if (clientId == null || clientId.isBlank()) {
+            return null;
+        }
+
+        Long tenantId = tenantPointerRepository.findByClientCode(clientId.trim())
+                .map(tenant -> tenant.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Tenant non trovato per client: " + clientId.trim()));
+
+        String normalizedSelectedProject = selectedProject.trim();
+        try {
+            long parsedProjectId = Long.parseLong(normalizedSelectedProject);
+            return projectRepository.findById(parsedProjectId)
+                    .filter(project -> project.getTenant() != null && tenantId.equals(project.getTenant().getId()))
+                    .map(project -> project.getId())
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Progetto non trovato: " + normalizedSelectedProject));
+        } catch (NumberFormatException ignored) {
+            return projectRepository.findByCodeIgnoreCaseAndTenant_Id(normalizedSelectedProject, tenantId)
+                    .map(project -> project.getId())
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Progetto non trovato: " + normalizedSelectedProject));
         }
     }
 
@@ -117,7 +156,7 @@ public class UserController {
             }
         }
         if (userId != null) {
-            var projects = userTenantProjectRelationService.findDashboardProjectsByUserId(userId);
+            var projects = userRoleProjectService.findDashboardProjectsByUserId(userId);
             response.put("userProjects", projects);
         } else {
             response.put("userProjects", List.of());

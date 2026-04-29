@@ -368,31 +368,4 @@
         <addPrimaryKey tableName="user_role_project" columnNames="user_id,tenant_id,role_id,project_id" constraintName="pk_user_role_project"/>
     </changeSet>
 
-    <changeSet id="20260411-initial-schema-user-tenant-project" author="copilot">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <tableExists tableName="user_tenant_project"/>
-            </not>
-        </preConditions>
-        <createTable tableName="user_tenant_project">
-            <column name="tenant_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="user_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="project_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="superuser" type="BOOLEAN" defaultValueBoolean="false">
-                <constraints nullable="false"/>
-            </column>
-            <column name="email" type="VARCHAR(255)"/>
-        </createTable>
-        <addPrimaryKey tableName="user_tenant_project" columnNames="tenant_id,user_id,project_id" constraintName="pk_user_tenant_project"/>
-        <addForeignKeyConstraint baseTableName="user_tenant_project" baseColumnNames="tenant_id" constraintName="fk_utp_tenant" referencedTableName="tenant_app_pointer" referencedColumnNames="id"/>
-        <addForeignKeyConstraint baseTableName="user_tenant_project" baseColumnNames="user_id" constraintName="fk_utp_user" referencedTableName="users" referencedColumnNames="id"/>
-        <addForeignKeyConstraint baseTableName="user_tenant_project" baseColumnNames="project_id" constraintName="fk_utp_project" referencedTableName="projects" referencedColumnNames="id"/>
-    </changeSet>
-
 </databaseChangeLog>

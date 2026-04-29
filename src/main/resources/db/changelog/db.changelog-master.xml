@@ -15,5 +15,9 @@
     <include file="20260417-06-create-medicines-table.xml" relativeToChangelogFile="true"/>
 
     <include file="20260419-01-add-birthdate-gender-to-patient.xml" relativeToChangelogFile="true"/>
+    <include file="20260429-01-drop-user-tenant-role-table.xml" relativeToChangelogFile="true"/>
+    <include file="20260429-02-drop-user-tenant-project-table.xml" relativeToChangelogFile="true"/>
+    <include file="20260429-03-update-onboarding-mail-template.xml" relativeToChangelogFile="true"/>
+    <include file="20260429-04-create-user-role-profile-table.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

@@ -4,6 +4,7 @@ import com.qtm.dashboard.project.entity.ProjectEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository CRUD dei progetti centralizzati su QTMDashboard.
@@ -11,6 +12,8 @@ import java.util.List;
 public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
 
     List<ProjectEntity> findByTenant_Id(Long tenantId);
+
+    Optional<ProjectEntity> findByCodeIgnoreCaseAndTenant_Id(String code, Long tenantId);
 
     boolean existsByCodeIgnoreCaseAndTenant_Id(String code, Long tenantId);
 

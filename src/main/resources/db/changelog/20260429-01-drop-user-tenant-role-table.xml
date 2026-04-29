@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260429-01-drop-user-tenant-role-table" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="user_tenant_role"/>
+        </preConditions>
+
+        <comment>Rimuove la tabella legacy user_tenant_role non piu utilizzata dal modello applicativo corrente.</comment>
+        <dropTable tableName="user_tenant_role"/>
+    </changeSet>
+
+</databaseChangeLog>

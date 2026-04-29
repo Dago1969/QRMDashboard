@@ -66,6 +66,7 @@ public class UserProvisioningService {
     private final KeycloakAuthService keycloakAuthService;
     private final MailTemplateRepository mailTemplateRepository;
     private final MailService mailService;
+    private final UserRoleProfileService userRoleProfileService;
 
     @Value("${app.tenants.default-tenant-app-url:http://localhost:8087/dashboard}")
     private String loginUrl;
@@ -200,6 +201,37 @@ public class UserProvisioningService {
                 requestedClientRoleNames,
                 summarizeExceptionChain(exception),
                 exception);
+            throw exception;
+        } finally {
+            keycloak.close();
+        }
+    }
+
+    /**
+     * Elimina l'utente da Keycloak se presente, usando lo username locale come identificativo canonico.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void deleteUserFromKeycloak(String username) {
+        String normalizedUsername = normalizeRequired(username, "Username obbligatorio per cancellazione Keycloak");
+
+        Keycloak keycloak = buildAdminClient();
+        try {
+            RealmResource realmResource = keycloak.realm(requiredRealm());
+            UserRepresentation existingUser = findKeycloakUser(realmResource, normalizedUsername);
+            if (existingUser == null) {
+                log.warn("[UserProvisioningService] Cancellazione Keycloak saltata: utente non trovato per username={}", normalizedUsername);
+                return;
+            }
+
+            realmResource.users().delete(existingUser.getId());
+            log.info("[UserProvisioningService] Utente Keycloak eliminato: username={}, keycloakUserId={}",
+                    normalizedUsername,
+                    existingUser.getId());
+        } catch (Exception exception) {
+            log.error("[UserProvisioningService] Errore durante la cancellazione utente Keycloak: username={}, details={}",
+                    normalizedUsername,
+                    summarizeExceptionChain(exception),
+                    exception);
             throw exception;
         } finally {
             keycloak.close();
@@ -1049,7 +1081,13 @@ public class UserProvisioningService {
         entity.setRole(findRoleById(userDto.getRoleId()));
         entity.setPasswordHash(generatedPassword);
         entity.setDataFineValiditaPassword(LocalDate.now().plusMonths(PASSWORD_VALIDITY_MONTHS));
-        return userRepository.save(entity);
+        UserEntity savedEntity = userRepository.save(entity);
+        userRoleProfileService.saveForUser(
+            savedEntity.getId(),
+            userDto.getClientId(),
+            savedEntity.getRole() != null ? savedEntity.getRole().getId() : null,
+            userDto.getProjectId());
+        return savedEntity;
     }
 
     private RoleEntity findRoleById(String roleId) {
