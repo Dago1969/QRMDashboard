@@ -5,20 +5,11 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Esegue solo i nuovi caricamenti geografici richiesti. -->
-    <include file="20260417-01-insert-country.xml" relativeToChangelogFile="true"/>
-    <include file="20260417-02-insert-region.xml" relativeToChangelogFile="true"/>
-    <include file="20260417-03-insert-province.xml" relativeToChangelogFile="true"/>
-    <include file="20260417-04-insert-city.xml" relativeToChangelogFile="true"/>
-
-    <include file="20260417-05-insert-roles.xml" relativeToChangelogFile="true"/>
-    <include file="20260417-06-create-medicines-table.xml" relativeToChangelogFile="true"/>
-
-    <include file="20260419-01-add-birthdate-gender-to-patient.xml" relativeToChangelogFile="true"/>
-    <include file="20260429-01-drop-user-tenant-role-table.xml" relativeToChangelogFile="true"/>
-    <include file="20260429-02-drop-user-tenant-project-table.xml" relativeToChangelogFile="true"/>
-    <include file="20260429-03-update-onboarding-mail-template.xml" relativeToChangelogFile="true"/>
-    <include file="20260429-04-create-user-role-profile-table.xml" relativeToChangelogFile="true"/>
-    <include file="20260430-01-add-project-json-visit.xml" relativeToChangelogFile="true"/>
+    <!-- Baseline pulita del database con schema finale e seed idempotenti. -->
+    <include file="20260430-10-baseline-schema.xml" relativeToChangelogFile="true"/>
+    <include file="20260430-11-seed-geography.xml" relativeToChangelogFile="true"/>
+    <include file="20260430-12-seed-roles.xml" relativeToChangelogFile="true"/>
+    <include file="20260430-13-seed-mail-templates.xml" relativeToChangelogFile="true"/>
+    <include file="20260430-14-seed-medicines.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

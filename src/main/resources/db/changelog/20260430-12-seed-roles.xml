@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Seed ruoli riallineato ai valori legacy richiesti. -->
+    <changeSet id="20260430-12-seed-roles" author="copilot">
+        <validCheckSum>9:85c68eecd5206d8ff0a1290223e1d963</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="roles"/>
+        </preConditions>
+        <sql splitStatements="true" stripComments="true"><![CDATA[
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Admin_QTM', 'Admin_QTM', 'l’utente con privilegi gestionali all’interno della piattaforma QTM, con funzioni di configurazione e supervisione a livello di uno o più tenant (progetti). CRUD completo su anagrafiche, farmaci manuali, PT', NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id;
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Doctor-HospitalReferent', 'Doctor-HospitalReferent', 'Ospedale/reparto assegnato', NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id;
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Operator_QTM', 'Operator_QTM', 'Operator_QTM', NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id;
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('SUPER_ADMIN', 'SUPER_ADMIN', 'SUPER_ADMIN', NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id;
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Supervisor _FO_FR', 'Supervisor _FO_FR', 'Farmacia ospedaliera o farmacia retail di competenza', NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id;
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Supervisor_ASL', 'Supervisor_ASL', 'YY figura di riferimento gestionale che opera all''interno della propria ASL nel contesto della piattaforma QTM.', NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id;
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>

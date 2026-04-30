@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Popolamento catalogo medicines copiato dal seed legacy. -->
+    <changeSet id="20260430-14-seed-medicines" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medicines"/>
+        </preConditions>
+        <loadUpdateData tableName="medicines"
+                        primaryKey="codice_aic"
+                        file="data/confezioni_fornitura.csv"
+                        relativeToChangelogFile="true"
+                        separator=";"
+                        encoding="UTF-8">
+            <column header="CODICE_AIC" name="codice_aic"/>
+            <column header="COD_FARMACO" name="cod_farmaco"/>
+            <column header="COD_CONFEZIONE" name="cod_confezione"/>
+            <column header="DENOMINAZIONE" name="denominazione"/>
+            <column header="DESCRIZIONE" name="descrizione"/>
+            <column header="CODICE_DITTA" name="codice_ditta"/>
+            <column header="RAGIONE_SOCIALE" name="ragione_sociale"/>
+            <column header="STATO_AMMINISTRATIVO" name="stato_amministrativo"/>
+            <column header="TIPO_PROCEDURA" name="tipo_procedura"/>
+            <column header="FORMA" name="forma"/>
+            <column header="CODICE_ATC" name="codice_atc"/>
+            <column header="PA_ASSOCIATI" name="pa_associati"/>
+            <column header="FORNITURA" name="fornitura"/>
+            <column header="LINK_FI" name="link_fi"/>
+            <column header="LINK_RCP" name="link_rcp"/>
+        </loadUpdateData>
+    </changeSet>
+
+</databaseChangeLog>
