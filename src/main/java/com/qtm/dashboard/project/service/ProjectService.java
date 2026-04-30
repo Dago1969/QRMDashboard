@@ -62,6 +62,7 @@ public class ProjectService {
         entity.setAdministrators(projectDto.getAdministrators());
         entity.setRoleIds(defaultList(projectDto.getRoleIds()));
         entity.setEnabledModuleCodes(defaultList(projectDto.getEnabledModuleCodes()));
+        entity.setJsonVisit(normalizeOptional(projectDto.getJsonVisit()));
         log.debug("[ProjectService] Entity da salvare: {}", entity);
         ProjectEntity savedProject = projectRepository.save(entity);
         projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
@@ -121,6 +122,7 @@ public class ProjectService {
         entity.setAdministrators(projectDto.getAdministrators());
         entity.setRoleIds(defaultList(projectDto.getRoleIds()));
         entity.setEnabledModuleCodes(defaultList(projectDto.getEnabledModuleCodes()));
+        entity.setJsonVisit(normalizeOptional(projectDto.getJsonVisit()));
         ProjectEntity savedProject = projectRepository.save(entity);
         projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
         log.info("Project centralizzato aggiornato: id={}, code={}, tenantId={}",

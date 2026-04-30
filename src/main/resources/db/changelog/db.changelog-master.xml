@@ -19,5 +19,6 @@
     <include file="20260429-02-drop-user-tenant-project-table.xml" relativeToChangelogFile="true"/>
     <include file="20260429-03-update-onboarding-mail-template.xml" relativeToChangelogFile="true"/>
     <include file="20260429-04-create-user-role-profile-table.xml" relativeToChangelogFile="true"/>
+    <include file="20260430-01-add-project-json-visit.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

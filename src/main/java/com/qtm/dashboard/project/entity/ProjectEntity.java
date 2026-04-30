@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -79,6 +80,10 @@ public class ProjectEntity {
     @Convert(converter = StringListJsonConverter.class)
     @Column(name = "enabled_module_codes_json", columnDefinition = "TEXT")
     private List<String> enabledModuleCodes = new ArrayList<>();
+
+    @Lob
+    @Column(name = "json_visit", columnDefinition = "TEXT")
+    private String jsonVisit;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
