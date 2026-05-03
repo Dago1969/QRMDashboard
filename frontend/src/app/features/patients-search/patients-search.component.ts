@@ -68,8 +68,8 @@ export class PatientsSearchComponent {
     { key: 'assistedId', labelKey: 'patients.field.assistedId' },
     { key: 'firstName', labelKey: 'patients.field.firstName' },
     { key: 'lastName', labelKey: 'patients.field.lastName' },
-    { key: 'gender', labelKey: 'patients.field.gender', formatter: (row) => this.formatGender(row.gender) },
-    { key: 'birthDate', labelKey: 'patients.field.birthDate', formatter: (row) => row.birthDate || '-' },
+    { key: 'gender', labelKey: 'patients.field.gender', formatter: (row: any) => this.formatGender(row.gender) },
+    { key: 'birthDate', labelKey: 'patients.field.birthDate', formatter: (row: any) => row.birthDate || '-' },
     { key: 'fiscalCode', labelKey: 'patients.field.fiscalCode' },
     { key: 'email', labelKey: 'patients.field.email' }
   ];

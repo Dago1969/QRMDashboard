@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260503-01-add-project-json-visit" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <tableExists tableName="projects"/>
+            <not>
+                <columnExists tableName="projects" columnName="json_visit"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="projects">
+            <column name="json_visit" type="TEXT"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="projects" columnName="json_visit"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

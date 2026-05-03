@@ -2,6 +2,11 @@
   color: #b00020;
   font-weight: bold;
 }
+
+.dashboard-content-card {
+  min-height: calc(100vh - 48px);
+}
+
 @keyframes feedbackFadeOut {
   from {
     opacity: 1;
@@ -88,8 +93,7 @@
   gap: 16px;
 }
 
-
-h2 {
+.dashboard-header h2 {
   margin-top: 0;
 }
 
@@ -124,4 +128,15 @@ h2 {
   background: #f8fafc;
   overflow: auto;
   white-space: pre-wrap;
+}
+
+@media (max-width: 960px) {
+  .dashboard-content-card {
+    min-height: auto;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

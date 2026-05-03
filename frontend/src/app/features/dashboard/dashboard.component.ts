@@ -2,7 +2,7 @@
 // ...existing code...
 import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
 import { catchError, forkJoin, of } from 'rxjs';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -15,11 +15,25 @@ import { AuthService, DashboardResponse, DashboardUserProject, TenantInfo } from
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgIf, NgFor, RouterLink],
+  imports: [NgIf, NgFor, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  managementMenuOpen = true;
+
+  get isDashboardHome(): boolean {
+    return this.router.url === '/dashboard' || this.router.url === '/dashboard/';
+  }
+
+  /**
+   * Restituisce true se l'utente ha ruolo SUPER_ADMIN o ADMIN_QTM in almeno un progetto.
+   */
+  isSuperAdminOrAdminQtm(): boolean {
+    return this.userProjects.some(
+      p => p.roleId === 'SUPER_ADMIN' || p.roleId === 'ADMIN_QTM'
+    );
+  }
   private static readonly technicalClientCodes = new Set(['account']);
 
   message = '';
@@ -45,6 +59,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private readonly i18nPropertiesService: I18nPropertiesService,
     private readonly cdr: ChangeDetectorRef
   ) {}
+
+  get sidebarProjectSummary(): DashboardUserProject | null {
+    return this.groupedProjects.flatMap((group) => group.projects)[0] ?? this.userProjects[0] ?? null;
+  }
 
   ngOnInit(): void {
     this.i18nPropertiesService.loadTranslations(navigator.language).subscribe({
@@ -82,6 +100,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  toggleManagementMenu(): void {
+    this.managementMenuOpen = !this.managementMenuOpen;
   }
 
   t(key: string): string {

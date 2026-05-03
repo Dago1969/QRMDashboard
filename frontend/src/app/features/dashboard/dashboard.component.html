@@ -1,61 +1,98 @@
-<div class="container">
-  <div class="card">
-    <div class="dashboard-header">
-      <h2>{{ t('dashboard.title') }}</h2>
-      <button class="btn btn-danger" (click)="logout()">{{ t('dashboard.action.logout') }}</button>
+<div class="dashboard-shell">
+  <aside class="dashboard-sidebar">
+    <h1>{{ t('dashboard.menu.dashboard') }}</h1>
+
+    <div *ngIf="username" class="dashboard-user-info">
+      <span class="dashboard-user-row">
+        <span class="dashboard-user-icon" [attr.aria-label]="t('dashboard.label.user')">👤</span>
+        <span class="dashboard-user-name">{{ username }}</span>
+      </span>
     </div>
 
-    <!-- Link rapido alla gestione pazienti integrata in QTMDB -->
-    <div style="margin: 1em 0;">
-      <a routerLink="/patients/search" class="btn btn-success">
-        {{ t('dashboard.menu.patients') }}
-      </a>
-      <a routerLink="/medicines/search" class="btn btn-primary" style="margin-left: 0.75rem;">
-        {{ t('dashboard.menu.medicines') }}
-      </a>
-    </div>
-
-    <p *ngIf="message" class="feedback-banner feedback-banner-success" [class.feedback-banner-fade-out]="isMessageFading">
-      <strong>{{ t('dashboard.label.message') }}</strong> {{ message }}
+    <p class="dashboard-selection-info" *ngIf="sidebarProjectSummary">
+      <strong>{{ t('dashboard.label.client') }}</strong> {{ sidebarProjectSummary.tenantCode || '-' }}<br />
+      <strong>{{ t('dashboard.label.role') }}</strong> {{ sidebarProjectSummary.roleId || '-' }}<br />
+      <strong>{{ t('dashboard.label.project') }}</strong> {{ sidebarProjectSummary.projectCode || '-' }}
     </p>
-    <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
-    <p *ngIf="subject"><strong>{{ t('dashboard.label.subject') }}</strong> {{ subject }}</p>
 
+    <nav class="dashboard-sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="dashboard-sidebar-link">
+        {{ t('dashboard.menu.dashboard') }}
+      </a>
 
-    <div *ngIf="groupedProjects.length > 0">
-      <div *ngFor="let group of groupedProjects" class="client-group-card">
-        <div class="client-group-title">{{ group.tenantCode }}</div>
-        <p class="client-group-subtitle">
-          <strong>{{ t('dashboard.label.tenant') }}</strong> <span class="tenant-name">{{ group.tenantName || group.tenantCode || '-' }}</span>
-        </p>
-        <div class="client-roles-grid">
-          <div *ngFor="let project of group.projects" class="client-role-box" role="group">
-            <p><strong>{{ t('dashboard.label.role') }}</strong> {{ project.roleId }}</p>
-            <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ project.projectCode || 'Tutti' }}</span></p>
-            <p *ngIf="project.projectDescription && project.projectCode" class="client-group-subtitle">
-              <strong>{{ t('dashboard.label.projectDescription') }}</strong> {{ project.projectDescription }}
-            </p>
-            <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(project.tenantCode || '', project.roleId || '', project.projectCode ?? undefined)" tabindex="0">
-              {{ t('dashboard.menu.cta') }}
-            </button>
+      <div class="dashboard-nav-group">
+        <button class="dashboard-nav-group-toggle" type="button" (click)="toggleManagementMenu()">
+          <span>{{ t('dashboard.menu.management') }}</span>
+          <span class="dashboard-nav-group-chevron" [class.dashboard-nav-group-chevron-open]="managementMenuOpen">v</span>
+        </button>
+
+        <div class="dashboard-nav-group-children" *ngIf="managementMenuOpen">
+          <a routerLink="/dashboard/patients/search" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.patients') }}
+          </a>
+          <a routerLink="/dashboard/medicines/search" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.medicines') }}
+          </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/projects/search" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.projects') }}
+          </a>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="dashboard-main">
+    <div *ngIf="isDashboardHome; else routedBody" class="card dashboard-content-card">
+      <div class="dashboard-header">
+        <h2>{{ t('dashboard.title') }}</h2>
+        <button class="btn btn-danger" (click)="logout()">{{ t('dashboard.action.logout') }}</button>
+      </div>
+
+      <p *ngIf="message" class="feedback-banner feedback-banner-success" [class.feedback-banner-fade-out]="isMessageFading">
+        <strong>{{ t('dashboard.label.message') }}</strong> {{ message }}
+      </p>
+      <p *ngIf="username"><strong>{{ t('dashboard.label.user') }}</strong> {{ username }}</p>
+      <p *ngIf="subject"><strong>{{ t('dashboard.label.subject') }}</strong> {{ subject }}</p>
+
+      <div *ngIf="groupedProjects.length > 0">
+        <div *ngFor="let group of groupedProjects" class="client-group-card">
+          <div class="client-group-title">{{ group.tenantCode }}</div>
+          <p class="client-group-subtitle">
+            <strong>{{ t('dashboard.label.tenant') }}</strong> <span class="tenant-name">{{ group.tenantName || group.tenantCode || '-' }}</span>
+          </p>
+          <div class="client-roles-grid">
+            <div *ngFor="let project of group.projects" class="client-role-box" role="group">
+              <p><strong>{{ t('dashboard.label.role') }}</strong> {{ project.roleId }}</p>
+              <p><strong>{{ t('dashboard.label.project') }}</strong> <span class="project-name-red">{{ project.projectCode || '-' }}</span></p>
+              <p *ngIf="project.projectDescription && project.projectCode" class="client-group-subtitle">
+                <strong>{{ t('dashboard.label.projectDescription') }}</strong> {{ project.projectDescription }}
+              </p>
+              <button class="btn btn-primary btn-sm" (click)="openTenantsDashboard(project.tenantCode || '', project.roleId || '', project.projectCode ?? undefined)" tabindex="0">
+                {{ t('dashboard.menu.cta') }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <p *ngIf="userProjects.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
+      <p *ngIf="userProjects.length === 0"><strong>{{ t('dashboard.noClientRoles') }}</strong></p>
 
-    <div *ngIf="decodedClaimsJson" class="jwt-debug">
-      <strong>{{ t('dashboard.jwtDecodedClaims') }}</strong>
-      <pre>{{ decodedClaimsJson }}</pre>
-    </div>
-
-    <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
-      <div class="feedback-banner-content">
-        <strong>{{ t('dashboard.error.title') }}</strong>
-        <p>{{ errorMessage }}</p>
+      <div *ngIf="decodedClaimsJson" class="jwt-debug">
+        <strong>{{ t('dashboard.jwtDecodedClaims') }}</strong>
+        <pre>{{ decodedClaimsJson }}</pre>
       </div>
-      <button class="btn btn-primary btn-sm" (click)="closeErrorModal()">{{ t('common.ok') }}</button>
+
+      <div *ngIf="errorMessage" class="feedback-banner feedback-banner-error" [class.feedback-banner-fade-out]="isErrorFading">
+        <div class="feedback-banner-content">
+          <strong>{{ t('dashboard.error.title') }}</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="closeErrorModal()">{{ t('common.ok') }}</button>
+      </div>
     </div>
-  </div>
+
+    <ng-template #routedBody>
+      <router-outlet></router-outlet>
+    </ng-template>
+  </main>
 </div>
