@@ -68,7 +68,7 @@ public class UserProvisioningService {
     private final MailService mailService;
     private final UserRoleProfileService userRoleProfileService;
 
-    @Value("${app.tenants.default-tenant-app-url:http://localhost:8087/dashboard}")
+    @Value("${app.tenants.default-tenant-app-url:http://localhost:4201/dashboard}")
     private String loginUrl;
 
     @Transactional

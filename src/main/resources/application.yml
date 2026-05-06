@@ -59,14 +59,14 @@ app:
     admin-user-realm: ${APP_KEYCLOAK_ADMIN_USER_REALM:master}
     client-association-attribute: ${APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE:qtm-client-id}
   tenants:
-    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:8087/dashboard}
+    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:4201/dashboard}
     mappings:
       - client-code: app-cliente-A
         client-name: app-cliente-A
-        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:8087/dashboard}
+        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:4201/dashboard}
         enabled: true
       - client-code: app-cliente-B
         client-name: app-cliente-B
-        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:8087/dashboard}
+        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:4201/dashboard}
         enabled: true
 

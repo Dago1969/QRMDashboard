@@ -13,4 +13,6 @@
     <include file="20260430-13-seed-mail-templates.xml" relativeToChangelogFile="true"/>
     <include file="20260430-14-seed-medicines.xml" relativeToChangelogFile="true"/>
 
+    <include file="20260505-01-update-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

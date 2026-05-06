@@ -10,7 +10,7 @@
         <sql splitStatements="true" stripComments="false"><![CDATA[
 -- Qui erano presenti anche i dati di country, region, province, city: ora migrati in script dedicati.
 INSERT IGNORE INTO tenant_app_pointer (id, client_code, client_name, tenant_app_url, enabled) VALUES
-  (1, 'postman-client', 'TENANTS-APP Default', 'http://localhost:8087', true),
+  (1, 'postman-client', 'TENANTS-APP Default', 'http://localhost:4201', true),
   (2, 'app-cliente-A', 'app-cliente-A', 'http://localhost:4201/dashboard', true),
   (3, 'app-cliente-B', 'app-cliente-B', 'http://localhost:4201/dashboard', true),
   (4, 'app-cliente-C', 'app-cliente-C', 'http://localhost:4201/dashboard', true);
