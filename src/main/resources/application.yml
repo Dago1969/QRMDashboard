@@ -19,7 +19,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8085/realms/QTM}
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8085/realms/${APP_KEYCLOAK_REALM_CODE:realmCode}}
 
   mail:
     host: smtp.gmail.com
@@ -45,8 +45,8 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://localhost:8086}
   keycloak:
     server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
-    realm: ${APP_KEYCLOAK_REALM:QTM}
-    token-url: ${APP_KEYCLOAK_TOKEN_URL:http://localhost:8085/realms/QTM/protocol/openid-connect/token}
+    realmCode: ${APP_KEYCLOAK_REALM_CODE:QTM}
+    token-url: ${APP_KEYCLOAK_TOKEN_URL:http://localhost:8085/realms/${APP_KEYCLOAK_REALM_CODE:realmCode}/protocol/openid-connect/token}
     client-id: ${APP_KEYCLOAK_CLIENT_ID:postman-client}
     client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}

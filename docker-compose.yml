@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: dago
-      MYSQL_DATABASE: QTMDashboard
+      MYSQL_DATABASE: qtmdashboard${APP_KEYCLOAK_REALM_CODE}
     ports:
       - "3307:3306"
     volumes:
@@ -29,18 +29,18 @@ services:
         condition: service_healthy
     environment:
       QTMDB_ENV: collaudo
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qtmdashboard${APP_KEYCLOAK_REALM_CODE}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: dago
       # MODIFICA: Usa il nome del servizio Docker e la porta interna 8080
       APP_KEYCLOAK_SERVER_URL: http://keycloak:8080
-      APP_KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/QTM/protocol/openid-connect/token
+      APP_KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/${APP_KEYCLOAK_REALM_CODE}/protocol/openid-connect/token
       # IMPORTANTE: L'ISSUER deve rimanere localhost:8085 perché è quello che vede il browser
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8085/realms/QTM     
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8085/realms/${APP_KEYCLOAK_REALM_CODE}     
       APP_CORS_ALLOWED_ORIGINS: http://localhost:4200,http://127.0.0.1:4200
       # AGGIUNGI QUESTA RIGA: 
       # Forza il backend a scaricare le chiavi di validazione tramite la rete interna Docker
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/QTM/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${APP_KEYCLOAK_REALM_CODE}/protocol/openid-connect/certs
     ports:
       - "8086:8086"
     networks:

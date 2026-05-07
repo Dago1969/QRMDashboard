@@ -11,7 +11,7 @@ Progetto completo con:
 
 ### Keycloak
 
-- URL token: `http://localhost:8085/realms/QTM/protocol/openid-connect/token`
+- URL token: `http://localhost:8085/realms/<realmCode>/protocol/openid-connect/token` (il nome del realm è ora parametrico tramite la variabile d'ambiente APP_KEYCLOAK_REALM_CODE, default realmCode)
 - Realm: `QTM`
 - Client: `postman-client`
 - Grant type: `password`
@@ -85,8 +85,9 @@ docker run --rm -p 8086:8086 \
 	-e SPRING_DATASOURCE_USERNAME=root \
 	-e SPRING_DATASOURCE_PASSWORD=dago \
 	-e APP_KEYCLOAK_SERVER_URL="http://<keycloak-host>:8085" \
-	-e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="http://<keycloak-host>:8085/realms/QTM" \
-	-e APP_KEYCLOAK_TOKEN_URL="http://<keycloak-host>:8085/realms/QTM/protocol/openid-connect/token" \
+	-e APP_KEYCLOAK_REALM_CODE="realmCode" \
+	-e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="http://<keycloak-host>:8085/realms/$APP_KEYCLOAK_REALM_CODE" \
+	-e APP_KEYCLOAK_TOKEN_URL="http://<keycloak-host>:8085/realms/$APP_KEYCLOAK_REALM_CODE/protocol/openid-connect/token" \
 	-e APP_CORS_ALLOWED_ORIGINS="http://localhost:4200,http://127.0.0.1:4200" \
 	qtm-dashboard
 

@@ -10,8 +10,8 @@ ENV SERVER_PORT=8086 \
 	SPRING_DATASOURCE_USERNAME=root \
 	SPRING_DATASOURCE_PASSWORD=dago \
 	APP_KEYCLOAK_SERVER_URL=http://host.docker.internal:8085 \
-	SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://host.docker.internal:8085/realms/QTM \
-	APP_KEYCLOAK_TOKEN_URL=http://host.docker.internal:8085/realms/QTM/protocol/openid-connect/token \
+	SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://host.docker.internal:8085/realms/${APP_KEYCLOAK_REALM_CODE} \
+	APP_KEYCLOAK_TOKEN_URL=http://host.docker.internal:8085/realms/${APP_KEYCLOAK_REALM_CODE}/protocol/openid-connect/token \
 	APP_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
 
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Aggiorna client_code, client_name e tenant_app_url in modo parametrico, senza duplicati e senza placeholder. -->
+    <changeSet id="20260507-01-update-tenant-app-pointer-realm-param" author="copilot">
+        <sql>
+            UPDATE tenant_app_pointer
+            SET client_code = CONCAT('${APP_KEYCLOAK_REALM_CODE}', '-A'),
+                client_name = CONCAT('${APP_KEYCLOAK_REALM_CODE}', '-A'),
+                tenant_app_url = CONCAT('http://localhost:', '${portClientA}', '/dashboard')
+            WHERE client_code = 'app-cliente-A' AND client_name = 'app-cliente-A';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
