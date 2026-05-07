@@ -15,9 +15,10 @@ Quando l’utente chiede "compila tutto" devi SEMPRE:
 2. Confermare che tutti i progetti siano compilati correttamente.
 ## 🚦 Committa tutto
 
-Quando l’utente chiede "committa tutto" devi SEMPRE:
+**Esegui SEMPRE i comandi git add, commit e push dalla root del progetto QTMDashnboard eTenants-app e NON da sottocartelle (es. frontend).**
+Questo garantisce che tutte le modifiche, inclusi i sorgenti backend e frontend, vengano versionate e mandate su remoto.
 
-1. Eseguire `git add .` su tutti i progetti della workspace.
+1. Eseguire `git add .` su tutti i progetti della workspace dalla root del progetto.
 2. Eseguire `git commit -m "<messaggio>"` su tutti i progetti (usa un messaggio coerente con le modifiche).
 3. Eseguire `git push` su tutti i progetti.
 
@@ -32,6 +33,7 @@ Devi eseguire questi comandi in sequenza, per ogni progetto, e confermare l’av
 - `TENAPP` = `TENANTS-APP`
 - `QTMPAT` = `QTMPatients`
 - `QTMCL` = `QTMCommonLib`
+- `RealmM` = `RealmManager`
 
 ### 🚀 Potenziamento della Modalità Agente
 
