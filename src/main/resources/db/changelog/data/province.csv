@@ -2,7 +2,7 @@ id,region_id,sigla_provincia,name,tipologia_provincia,numero_comuni,superficie_k
 1,19,AG,Agrigento,Libero consorzio di comuni,43,3053.8476,084
 2,1,AL,Alessandria,Provincia,187,3558.4988,006
 3,11,AN,Ancona,Provincia,47,1962.8560,042
-4,2,AO,"Valle d'Aosta/Vallée d'Aoste",Provincia,74,3260.5014,007
+4,2,AO,"Valle d'Aosta",Provincia,74,3260.5014,007
 5,11,AP,Ascoli Piceno,Provincia,33,1228.6084,044
 6,13,AQ,"L'Aquila",Provincia,108,5048.0699,066
 7,9,AR,Arezzo,Provincia,36,3233.6923,051

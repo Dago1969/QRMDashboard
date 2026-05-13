@@ -1,8 +1,8 @@
 id,country_id,ripartizione_geografica,codice_regione,name,tipologia_regione,numero_province,numero_comuni,superficie_kmq
 1,152,Nord-ovest,01,Piemonte,statuto ordinario,8,1180,25391.7034
-2,152,Nord-ovest,02,"Valle d'Aosta/Vallée d'Aoste",statuto speciale,1,74,3260.5014
+2,152,Nord-ovest,02,"Valle d'Aosta",statuto speciale,1,74,3260.5014
 3,152,Nord-ovest,03,Lombardia,statuto ordinario,12,1501,23861.1519
-4,152,Nord-est,04,"Trentino-Alto Adige/Südtirol",statuto speciale,2,282,13607.7563
+4,152,Nord-est,04,"Trentino-Alto Adige",statuto speciale,2,282,13607.7563
 5,152,Nord-est,05,Veneto,statuto ordinario,7,560,18354.2207
 6,152,Nord-est,06,Friuli-Venezia Giulia,statuto speciale,4,215,7933.1665
 7,152,Nord-ovest,07,Liguria,statuto ordinario,4,234,5419.4520

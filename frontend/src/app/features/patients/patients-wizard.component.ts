@@ -48,6 +48,7 @@ interface FormField {
   key: keyof PatientFormModel;
   labelKey: string;
   type: FieldType;
+  required?: boolean;
   readonly?: boolean;
   options?: Array<{ value: string; labelKey: string }>;
 }
@@ -107,30 +108,28 @@ interface PhoneInputBinding {
               [readonly]="field.readonly || isViewMode"
               [disabled]="field.readonly || isViewMode"
             />
+            <select
+              *ngIf="field.type === 'select'"
+              [(ngModel)]="model[field.key]"
+              [name]="getFieldName(field)"
+              [disabled]="field.readonly || isViewMode"
+            >
+              <option value=""></option>
+              <option *ngFor="let option of field.options ?? []" [value]="option.value">{{ t(option.labelKey) }}</option>
+            </select>
+            <input
+              *ngIf="field.type === 'checkbox'"
+              type="checkbox"
+              [(ngModel)]="model[field.key]"
+              [name]="getFieldName(field)"
+              [disabled]="isViewMode"
+              class="checkbox-input"
+            />
           </ng-template>
 
           <small *ngIf="shouldShowPhoneRequiredError(field)" class="field-error">
             {{ t('crud.validation.required') }}
           </small>
-
-          <select
-            *ngIf="field.type === 'select'"
-            [(ngModel)]="model[field.key]"
-            [name]="getFieldName(field)"
-            [disabled]="field.readonly || isViewMode"
-          >
-            <option value=""></option>
-            <option *ngFor="let option of field.options ?? []" [value]="option.value">{{ t(option.labelKey) }}</option>
-          </select>
-
-          <input
-            *ngIf="field.type === 'checkbox'"
-            type="checkbox"
-            [(ngModel)]="model[field.key]"
-            [name]="getFieldName(field)"
-            [disabled]="isViewMode"
-            class="checkbox-input"
-          />
         </label>
       </div>
 
@@ -166,9 +165,9 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
       titleKey: 'patients.folder.identity',
       fields: [
         { key: 'assistedId', labelKey: 'patients.field.assistedId', type: 'text', readonly: true },
-        { key: 'firstName', labelKey: 'patients.field.firstName', type: 'text' },
-        { key: 'lastName', labelKey: 'patients.field.lastName', type: 'text' },
-        { key: 'birthDate', labelKey: 'patients.field.birthDate', type: 'date' },
+        { key: 'firstName', labelKey: 'patients.field.firstName', type: 'text', required: true },
+        { key: 'lastName', labelKey: 'patients.field.lastName', type: 'text', required: true },
+        { key: 'birthDate', labelKey: 'patients.field.birthDate', type: 'date', required: true },
         {
           key: 'gender',
           labelKey: 'patients.field.gender',
