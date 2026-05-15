@@ -20,6 +20,7 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.RolesResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -91,11 +92,13 @@ public class UserProvisioningService {
         try {
             RealmResource realmResource = keycloak.realm(requiredRealm());
             ClientRepresentation requestedClient = resolveClient(realmResource, requestedClientId);
+            List<String> requestedRealmRoleNames = resolveRequestedRealmRoleNames(userDto.getRoleId());
             List<String> requestedClientRoleNames = resolveRequestedClientRoleNames(userDto.getRoleId());
 
-            log.info("[UserProvisioningService] Client Keycloak risolto: requestedClientId={}, resolvedClientUuid={}, requestedRoleNames={}",
+            log.info("[UserProvisioningService] Client Keycloak risolto: requestedClientId={}, resolvedClientUuid={}, requestedRealmRoleNames={}, requestedClientRoleNames={}",
                 requestedClient != null ? requestedClient.getClientId() : null,
                 requestedClient != null ? requestedClient.getId() : null,
+                requestedRealmRoleNames,
                 requestedClientRoleNames);
 
             UserResource keycloakUserResource = upsertKeycloakUser(
@@ -103,6 +106,7 @@ public class UserProvisioningService {
                     userDto,
                     normalizedUsername,
                     requestedClient,
+                    requestedRealmRoleNames,
                     requestedClientRoleNames);
 
             log.info("[UserProvisioningService] Password temporanea generata per username={}: {}", normalizedUsername, generatedPassword);
@@ -122,6 +126,12 @@ public class UserProvisioningService {
     }
 
     private void sendOnboardingMail(UserDto userDto, String generatedPassword) {
+        // Se il client esterno gestisce l'invio della mail, salta
+        if (userDto.isSkipOnboardingMail()) {
+            log.info("[UserProvisioningService] Invio onboarding saltato per username={}: skipOnboardingMail=true", userDto.getUsername());
+            return;
+        }
+
         if (userDto.getEmail() == null || userDto.getEmail().isBlank()) {
             log.info("[UserProvisioningService] Invio onboarding saltato: email assente per username={}", userDto.getUsername());
             return;
@@ -488,6 +498,7 @@ public class UserProvisioningService {
                                             UserDto userDto,
                                             String normalizedUsername,
                                             ClientRepresentation requestedClient,
+                                            List<String> requestedRealmRoleNames,
                                             List<String> requestedClientRoleNames) {
         String requestedClientId = requestedClient != null ? requestedClient.getClientId() : null;
         UserRepresentation existingUser = findKeycloakUser(realmResource, normalizedUsername);
@@ -495,12 +506,14 @@ public class UserProvisioningService {
             String createdUserId = createKeycloakUser(realmResource, userDto, normalizedUsername, requestedClientId);
             UserResource createdUserResource = realmResource.users().get(createdUserId);
             synchronizeClientAssociation(createdUserResource, requestedClientId);
+            synchronizeRealmRoleAssociation(createdUserResource, realmResource, requestedRealmRoleNames);
             synchronizeClientRoleAssociation(createdUserResource, realmResource, requestedClient, requestedClientRoleNames);
             return createdUserResource;
         }
 
         UserResource existingUserResource = realmResource.users().get(existingUser.getId());
         synchronizeExistingUser(existingUserResource, userDto, normalizedUsername, requestedClientId);
+        synchronizeRealmRoleAssociation(existingUserResource, realmResource, requestedRealmRoleNames);
         synchronizeClientRoleAssociation(existingUserResource, realmResource, requestedClient, requestedClientRoleNames);
         return existingUserResource;
     }
@@ -644,9 +657,49 @@ public class UserProvisioningService {
         }
     }
 
-    /**
-     * Assicura un mapping client-level reale su Keycloak, cosi' il client richiesto compare in resource_access.
-     */
+    private void synchronizeRealmRoleAssociation(UserResource userResource,
+                                                 RealmResource realmResource,
+                                                 List<String> requestedRealmRoleNames) {
+        List<String> normalizedRequestedRoleNames = Optional.ofNullable(requestedRealmRoleNames)
+                .orElse(List.of())
+                .stream()
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (normalizedRequestedRoleNames.isEmpty()) {
+            return;
+        }
+
+        List<RoleRepresentation> rolesToAssign = normalizedRequestedRoleNames.stream()
+                .map(roleName -> resolveRealmRoleRepresentation(realmResource, roleName))
+                .filter(Objects::nonNull)
+                .toList();
+
+        log.info("[UserProvisioningService] Verifica realm roles per username={}, requestedRealmRoleNames={}, rolesToAssign={}",
+                userResource.toRepresentation().getUsername(),
+                normalizedRequestedRoleNames,
+                rolesToAssign.stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
+
+        if (rolesToAssign.isEmpty()) {
+            return;
+        }
+
+        userResource.roles().realmLevel().add(rolesToAssign);
+        log.info("[UserProvisioningService] Associati realm roles {}", rolesToAssign.stream().map(RoleRepresentation::getName).toList());
+    }
+
+    private RoleRepresentation resolveRealmRoleRepresentation(RealmResource realmResource, String roleName) {
+        try {
+            return realmResource.roles().get(roleName).toRepresentation();
+        } catch (Exception exception) {
+            log.warn("[UserProvisioningService] Realm role Keycloak non risolvibile: roleName={} cause={}",
+                    roleName,
+                    summarizeExceptionChain(exception));
+            return null;
+        }
+    }
+
     private void synchronizeClientRoleAssociation(UserResource userResource,
                                                   RealmResource realmResource,
                                                   ClientRepresentation requestedClient,
@@ -744,11 +797,11 @@ public class UserProvisioningService {
             try {
                 clientResource.roles().create(roleRepresentation);
             } catch (Exception exception) {
-                throw new ResponseStatusException(
-                        BAD_REQUEST,
-                        "Impossibile creare il ruolo client Keycloak " + missingRoleName
-                                + " per client " + requestedClientId,
-                        exception);
+            log.warn("[UserProvisioningService] Impossibile creare il ruolo client Keycloak {} per client {}. Proseguo con i ruoli gia' esistenti del client. cause={}",
+                missingRoleName,
+                requestedClientId,
+                summarizeExceptionChain(exception));
+            return Optional.ofNullable(clientResource.roles().list()).orElse(Optional.ofNullable(clientRoles).orElse(List.of()));
             }
 
             log.info("[UserProvisioningService] Ruolo client Keycloak creato o gia' esistente: clientId={}, roleName={}",
@@ -788,22 +841,14 @@ public class UserProvisioningService {
                     return List.of();
                 }
 
-                log.error("[UserProvisioningService] Nessun ruolo client esplicito trovato: clientId={}, requestedRoleNamesOriginal={}, requestedRoleNamesNormalized={}, availableRoleNames={}",
-                requestedClientId,
+                log.warn("[UserProvisioningService] Nessun ruolo client esplicito trovato: clientId={}, requestedRoleNamesOriginal={}, requestedRoleNamesNormalized={}, availableRoleNames={}. Provo fallback a ruolo tecnico di accesso.",
+                    requestedClientId,
                     requestedClientRoleNames,
                     normalizedRequestedRoleNames,
                     Optional.ofNullable(clientRoles).orElse(List.of()).stream().map(RoleRepresentation::getName).filter(Objects::nonNull).toList());
-                throw new ResponseStatusException(
-                        BAD_REQUEST,
-                "Ruolo client Keycloak non trovato per client " + requestedClientId
-                                + ": richiesto uno tra " + normalizedRequestedRoleNames
-                        + ", disponibili " + Optional.ofNullable(clientRoles).orElse(List.of()).stream()
-                                        .map(RoleRepresentation::getName)
-                                        .filter(Objects::nonNull)
-                                        .toList());
+            } else {
+                return excludeAlreadyAssignedRoles(explicitRoles, currentClientRoles);
             }
-
-            return excludeAlreadyAssignedRoles(explicitRoles, currentClientRoles);
         }
 
         if (clientRoles == null || clientRoles.isEmpty()) {
@@ -858,6 +903,27 @@ public class UserProvisioningService {
                 requestedRole.get().getName(),
                 requestedRole.get().getDescription(),
                 candidateRoleNames);
+
+        return List.copyOf(candidateRoleNames);
+    }
+
+    private List<String> resolveRequestedRealmRoleNames(String roleId) {
+        String normalizedRoleId = normalizeNullable(roleId);
+        if (normalizedRoleId == null) {
+            return List.of();
+        }
+
+        Optional<RoleEntity> requestedRole = roleRepository.findById(normalizedRoleId);
+        if (requestedRole.isEmpty()) {
+            return List.of(normalizedRoleId);
+        }
+
+        LinkedHashSet<String> candidateRoleNames = Stream.of(
+                        requestedRole.get().getId(),
+                        requestedRole.get().getName())
+                .map(this::normalizeRoleName)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
         return List.copyOf(candidateRoleNames);
     }

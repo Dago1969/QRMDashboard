@@ -93,6 +93,11 @@ public class UserRoleProjectService {
         repository.deleteByUserIdAndTenantIdAndRoleIdAndProjectId(userId, tenantId, roleId, projectId);
     }
 
+    @Transactional
+    public void deleteByUserId(Long userId) {
+        repository.deleteByUserId(userId);
+    }
+
     private UserRoleProjectDto toDto(UserRoleProjectEntity entity) {
         UserRoleProjectDto dto = new UserRoleProjectDto();
         dto.setUserId(entity.getUserId());

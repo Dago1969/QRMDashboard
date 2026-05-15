@@ -23,7 +23,10 @@ Questo garantisce che tutte le modifiche, inclusi i sorgenti backend e frontend,
 3. Eseguire `git push` su tutti i progetti.
 
 Devi eseguire questi comandi in sequenza, per ogni progetto, e confermare l’avvenuto push.
-# Istruzioni per GitHub Copilot Chat
+## ⚠️ IMPORTANTE: Non committare automaticamente
+**NON fare automaticamente `git add`, `git commit` e `git push` se l'utente non lo chiede esplicitamente.**
+Solo se l'utente dice "committa tutto" o "add commit push" o simili, allora eseguire i comandi git.
+In caso contrario, limitarsi a fare le modifiche ai file senza versionare su remoto.# Istruzioni per GitHub Copilot Chat
 
 ## Stile di interazione
 - Quando ti uso la risposta deve sempre iniziare con "ok Boss QTM"

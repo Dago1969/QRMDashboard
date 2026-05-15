@@ -6,6 +6,7 @@ import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
 import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
+import com.qtm.dashboard.user.repository.UserRoleProfileRepository;
 import com.qtm.dashboard.user.repository.UserRoleProjectRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,9 @@ class UserServiceTest {
     private RoleRepository roleRepository;
 
     @Mock
+    private UserRoleProfileRepository userRoleProfileRepository;
+
+    @Mock
     private UserRoleProjectRepository userRoleProjectRepository;
 
     @Mock
@@ -64,6 +68,7 @@ class UserServiceTest {
         userService.delete(42L);
 
         verify(userProvisioningService).deleteUserFromKeycloak("utente.test");
+        verify(userRoleProfileRepository).deleteByUserId(42L);
         verify(userRoleProjectRepository).deleteByUserId(42L);
         verify(userRepository).delete(user);
     }
@@ -83,6 +88,7 @@ class UserServiceTest {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> userService.delete(42L));
 
         assertEquals(BAD_GATEWAY, exception.getStatusCode());
+        verify(userRoleProfileRepository, never()).deleteByUserId(42L);
         verify(userRoleProjectRepository, never()).deleteByUserId(42L);
         verify(userRepository, never()).delete(user);
     }

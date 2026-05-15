@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * Repository per la tabella user_role_profile.
  */
 public interface UserRoleProfileRepository extends JpaRepository<UserRoleProfileEntity, UserRoleProfileId> {
+    void deleteByUserId(Long userId);
 }
