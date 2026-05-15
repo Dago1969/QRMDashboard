@@ -27,4 +27,7 @@ public class RoleEntity {
 
     @Column(name = "description", nullable = false)
     private String description;
+
+    @Column(name = "father", nullable = true)
+    private String father;
 }

@@ -51,8 +51,8 @@ app:
     client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
     admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
-    # Previous admin client secret: xEO7e15BFOtGOoDk0MWufISzYZGdTWtc  M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY
-    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY}
+    # Previous admin client secret: xEO7e15BFOtGOoDk0MWufISzYZGdTWtc  M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY Q5VQ0pWS6lS5N29u0xha5zodJ1LDM19h
+    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:Q5VQ0pWS6lS5N29u0xha5zodJ1LDM19h}
     admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
     admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
     admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}

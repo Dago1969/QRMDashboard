@@ -12,6 +12,7 @@ import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
 import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -293,6 +294,7 @@ public class UserProvisioningService {
 
                 try {
                     keycloak.tokenManager().getAccessTokenString();
+                    verifyAdminPermissions(keycloak, authenticationMode);
                     if (credentialFallbackAttempt) {
                         log.warn("[UserProvisioningService] Autenticazione admin Keycloak riuscita al tentativo fallback con mode={}", authenticationMode);
                     }
@@ -309,8 +311,31 @@ public class UserProvisioningService {
 
         throw new ResponseStatusException(
                 UNAUTHORIZED,
-                "Autenticazione admin Keycloak fallita: verifica APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET oppure configura APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD",
+                "Autenticazione admin Keycloak fallita o priva dei permessi admin sul realm target: verifica APP_KEYCLOAK_ADMIN_CLIENT_ID/SECRET con i ruoli realm-management del realm oppure configura APP_KEYCLOAK_ADMIN_USERNAME/PASSWORD",
                 lastException);
+    }
+
+    private void verifyAdminPermissions(Keycloak keycloak, String authenticationMode) {
+        String realm = requiredRealm();
+        String probeClientId = normalizeNullable(keycloakProperties.getClientId());
+        if (probeClientId == null) {
+            probeClientId = normalizeNullable(keycloakProperties.getAdminClientId());
+        }
+
+        if (probeClientId == null) {
+            return;
+        }
+
+        try {
+            keycloak.realm(realm).clients().findByClientId(probeClientId);
+        } catch (ForbiddenException exception) {
+            throw new ResponseStatusException(
+                    UNAUTHORIZED,
+                    "Il principal admin Keycloak autenticato con mode=" + authenticationMode
+                            + " non ha permessi sufficienti sul realm " + realm
+                            + ": assegna i ruoli realm-management necessari oppure usa APP_KEYCLOAK_ADMIN_GRANT_TYPE=password con admin-user-realm",
+                    exception);
+        }
     }
 
     private List<String> resolveAdminAuthenticationModes(String configuredGrantType,
@@ -431,7 +456,7 @@ public class UserProvisioningService {
     }
 
     private String requiredRealm() {
-        return normalizeRequired(keycloakProperties.getRealm(), "Realm Keycloak mancante");
+        return normalizeRequired(keycloakProperties.getRealmCode(), "Realm Keycloak mancante");
     }
 
     private String resolveRequestedClientId(UserDto userDto) {

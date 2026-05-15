@@ -21,4 +21,6 @@
 
     <include file="20260507-02-pilota-tripodi-superadmin.xml" relativeToChangelogFile="true"/>
 
+    <include file="20260515-01-add-role-father-column.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>
