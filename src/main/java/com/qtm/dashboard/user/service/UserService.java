@@ -10,6 +10,7 @@ import com.qtm.dashboard.user.entity.RoleEntity;
 import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.mapper.UserMapper;
 import com.qtm.dashboard.user.repository.RoleRepository;
+import com.qtm.dashboard.user.repository.UserRoleProfileRepository;
 import com.qtm.dashboard.user.repository.UserRoleProjectRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserRoleProfileRepository userRoleProfileRepository;
     private final UserRoleProjectRepository userRoleProjectRepository;
     private final UserMapper userMapper;
     private final UserProvisioningService userProvisioningService;
@@ -98,6 +100,8 @@ public class UserService {
 
         // Mantiene allineati DB locale e Keycloak durante la rimozione utente.
         userProvisioningService.deleteUserFromKeycloak(user.getUsername());
+        // Elimina tutte le relazioni user_role_profile e user_role_project prima di eliminare l'utente
+        userRoleProfileRepository.deleteByUserId(id);
         userRoleProjectRepository.deleteByUserId(id);
         userRepository.delete(user);
     }

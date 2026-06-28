@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Aggiunge il campo 'father' alla tabella 'roles' per tracciare l'ereditarietà dei ruoli. -->
+    <changeSet id="20260515-01-add-role-father-column" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="roles" columnName="father"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="roles">
+            <column name="father" type="VARCHAR(255)" remarks="ID del ruolo padre da cui è stato ereditato questo ruolo">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="roles" baseColumnNames="father" constraintName="fk_roles_father" referencedTableName="roles" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

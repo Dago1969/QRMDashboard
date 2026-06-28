@@ -7,6 +7,7 @@
 
     <!-- Baseline pulita del database con schema finale e seed idempotenti. -->
     <include file="20260430-10-baseline-schema.xml" relativeToChangelogFile="true"/>
+
     <include file="20260503-01-add-project-json-visit.xml" relativeToChangelogFile="true"/>
     <include file="20260430-11-seed-geography.xml" relativeToChangelogFile="true"/>
     <include file="20260430-12-seed-roles.xml" relativeToChangelogFile="true"/>
@@ -14,5 +15,41 @@
     <include file="20260430-14-seed-medicines.xml" relativeToChangelogFile="true"/>
 
     <include file="20260505-01-update-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260505-00-seed-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+    <include file="20260505-01-update-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260507-01-update-tenant-app-pointer-realm-param.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260507-02-pilota-tripodi-superadmin.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260515-01-add-role-father-column.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260515-02-seed-nurse-role.xml" relativeToChangelogFile="true"/>
+    <include file="20260628-01-create-asl-table.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260505-00-seed-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+    <include file="20260505-01-update-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260507-01-update-tenant-app-pointer-realm-param.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260507-02-pilota-tripodi-superadmin.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260515-01-add-role-father-column.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260515-02-seed-nurse-role.xml" relativeToChangelogFile="true"/>
+    <include file="20260628-01-create-asl-table.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260505-00-seed-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+    <include file="20260505-01-update-tenant-app-pointer.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260507-01-update-tenant-app-pointer-realm-param.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260507-02-pilota-tripodi-superadmin.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260515-01-add-role-father-column.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260515-02-seed-nurse-role.xml" relativeToChangelogFile="true"/>
+    <include file="20260628-01-create-asl-table.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

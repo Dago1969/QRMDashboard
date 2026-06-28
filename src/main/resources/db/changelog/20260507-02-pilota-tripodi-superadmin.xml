@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Inserimento tenant base id=1 se non esiste -->
+    <changeSet id="20260507-02-insert-tenant1" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tenant_app_pointer"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM tenant_app_pointer WHERE id = 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO tenant_app_pointer (id, client_code, client_name, tenant_app_url, enabled)
+            SELECT 1, CONCAT('${APP_KEYCLOAK_REALM_CODE}', '-A'),
+                CONCAT('${APP_KEYCLOAK_REALM_CODE}', '-A'), 'http://localhost:4201/dashboard', true
+            WHERE NOT EXISTS (SELECT 1 FROM tenant_app_pointer WHERE id = 1);
+        </sql>
+    </changeSet>
+
+    <!-- Inserimento nuovo progetto pilota -->
+    <changeSet id="20260507-02-insert-pilota-project" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="projects"/>
+            <tableExists tableName="tenant_app_pointer"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM tenant_app_pointer WHERE id = 1
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM projects WHERE code = 'PILOTA' AND tenant_id = 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="projects">
+            <column name="code" value="PILOTA"/>
+            <column name="descrizione" value="Progetto Pilota QTM"/>
+            <column name="logo" value=""/>
+            <column name="footer" value=""/>
+            <column name="email_sender" value="noreply@qtm.it"/>
+            <column name="data_inizio" valueDate="2026-05-07"/>
+            <column name="enabled_module_codes_json" value="[]"/>
+            <column name="tenant_id" valueNumeric="1"/>
+        </insert>
+    </changeSet>
+
+    <!-- Inserimento utente francesco.tripodi -->
+    <changeSet id="20260507-02-insert-tripodi-user" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="users"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM users WHERE username = 'francesco.tripodi'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="users">
+            <column name="username" value="francesco.tripodi"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="email" value="francesco.tripodi@gmail.com"/>
+            <column name="role_id" value="SUPER_ADMIN"/>
+            <column name="password_hash" value="Qtm!2026"/><!-- Sostituire con hash reale in produzione -->
+            <column name="telefono" value="+39 3478745993"/>
+            <column name="codice_fiscale" value="TRPFNC69E23H501T"/>
+        </insert>
+    </changeSet>
+
+    <!-- Associazione utente, progetto, ruolo SUPERADMIN, tenant 1 -->
+    <changeSet id="20260507-02-link-tripodi-superadmin" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="user_role_project"/>
+            <tableExists tableName="users"/>
+            <tableExists tableName="roles"/>
+            <tableExists tableName="projects"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM users WHERE username = 'francesco.tripodi'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM roles WHERE name = 'SUPER_ADMIN'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM projects WHERE code = 'PILOTA' AND tenant_id = 1
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM user_role_project urp
+                JOIN users u ON u.id = urp.user_id
+                JOIN roles r ON r.id = urp.role_id
+                JOIN projects p ON p.id = urp.project_id
+                WHERE urp.tenant_id = 1
+                  AND u.username = 'francesco.tripodi'
+                  AND r.name = 'SUPER_ADMIN'
+                  AND p.code = 'PILOTA'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO user_role_project (user_id, tenant_id, role_id, project_id)
+            SELECT u.id, 1, r.id, p.id
+            FROM users u, roles r, projects p
+            WHERE u.username = 'francesco.tripodi'
+              AND r.name = 'SUPER_ADMIN'
+              AND p.code = 'PILOTA' AND p.tenant_id = 1;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

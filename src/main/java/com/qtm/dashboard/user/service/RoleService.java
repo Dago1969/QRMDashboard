@@ -49,6 +49,7 @@ public class RoleService {
         RoleEntity current = findEntityById(id);
         current.setName(roleDto.getName() == null || roleDto.getName().isBlank() ? roleDto.getDescription() : roleDto.getName());
         current.setDescription(roleDto.getDescription());
+        current.setFather(roleDto.getFather());
         return roleMapper.toDto(roleRepository.save(current));
     }
 

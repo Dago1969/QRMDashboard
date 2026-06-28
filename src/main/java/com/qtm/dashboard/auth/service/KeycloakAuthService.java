@@ -6,6 +6,7 @@ import com.qtm.dashboard.auth.dto.LoginResponse;
 import com.qtm.dashboard.config.KeycloakProperties;
 import com.qtm.dashboard.user.entity.UserEntity;
 import com.qtm.dashboard.user.repository.UserRepository;
+import jakarta.ws.rs.ForbiddenException;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -404,11 +405,33 @@ public class KeycloakAuthService {
 
         try {
             keycloak.tokenManager().getAccessTokenString();
+            verifyAdminPermissions(keycloak);
             return keycloak;
         } catch (Exception exception) {
             keycloak.close();
             throw new ResponseStatusException(UNAUTHORIZED,
-                    "Autenticazione admin Keycloak fallita: verifica la configurazione admin",
+                    "Autenticazione admin Keycloak fallita o priva dei permessi admin sul realm target: verifica la configurazione admin e i ruoli realm-management",
+                    exception);
+        }
+    }
+
+    private void verifyAdminPermissions(Keycloak keycloak) {
+        String realm = requiredRealm();
+        String probeClientId = normalizeOptionalValue(keycloakProperties.getClientId());
+        if (probeClientId == null) {
+            probeClientId = normalizeOptionalValue(keycloakProperties.getAdminClientId());
+        }
+
+        if (probeClientId == null) {
+            return;
+        }
+
+        try {
+            keycloak.realm(realm).clients().findByClientId(probeClientId);
+        } catch (ForbiddenException exception) {
+            throw new ResponseStatusException(UNAUTHORIZED,
+                    "Il principal admin Keycloak autenticato non ha permessi sufficienti sul realm " + realm
+                            + ": assegna i ruoli realm-management necessari oppure usa APP_KEYCLOAK_ADMIN_GRANT_TYPE=password con admin-user-realm",
                     exception);
         }
     }

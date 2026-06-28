@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Aggiunge il ruolo NURSE_QTM al seed dei ruoli. -->
+    <changeSet id="20260515-02-seed-nurse-role" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="roles"/>
+        </preConditions>
+        <sql splitStatements="true" stripComments="true"><![CDATA[
+INSERT INTO roles (id, name, description, tenant_id, father)
+VALUES ('NURSE_QTM', 'NURSE_QTM', 'Ruolo infermiere con accesso alle funzioni di gestione paziente e terapie', NULL, NULL)
+AS new_values
+ON DUPLICATE KEY UPDATE
+    name = new_values.name,
+    description = new_values.description,
+    tenant_id = new_values.tenant_id,
+    father = new_values.father;
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>

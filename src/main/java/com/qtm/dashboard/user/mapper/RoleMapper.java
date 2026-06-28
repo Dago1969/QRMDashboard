@@ -15,6 +15,7 @@ public class RoleMapper {
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setDescription(entity.getDescription());
+        dto.setFather(entity.getFather());
         return dto;
     }
 
@@ -23,6 +24,7 @@ public class RoleMapper {
         entity.setId(dto.getId());
         entity.setName(resolveRoleName(dto));
         entity.setDescription(dto.getDescription());
+        entity.setFather(dto.getFather());
         return entity;
     }
 

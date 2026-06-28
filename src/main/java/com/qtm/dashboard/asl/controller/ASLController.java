@@ -1,0 +1,67 @@
+package com.qtm.dashboard.asl.controller;
+
+import com.qtm.commonlib.dto.ASLDto;
+import com.qtm.dashboard.asl.dto.ASLImportRequest;
+import com.qtm.dashboard.asl.dto.ASLOverviewDto;
+import com.qtm.dashboard.asl.service.ASLService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/asl")
+@RequiredArgsConstructor
+public class ASLController {
+
+    private final ASLService aslService;
+
+    @GetMapping
+    public ResponseEntity<List<ASLDto>> findAll() {
+        log.info("[ASLController] GET /api/asl");
+        List<ASLDto> result = aslService.findAll();
+        log.info("[ASLController] GET /api/asl returned {} records", result.size());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/overview")
+    public ResponseEntity<List<ASLOverviewDto>> findAllWithImportStatus() {
+        log.info("[ASLController] GET /api/asl/overview");
+        List<ASLOverviewDto> result = aslService.findAllWithImportStatus();
+        log.info("[ASLController] GET /api/asl/overview returned {} records", result.size());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ASLDto> findById(@PathVariable Long id) {
+        log.info("[ASLController] GET /api/asl/{}", id);
+        ASLDto dto = aslService.findById(id);
+        log.info("[ASLController] GET /api/asl/{} found={}", id, dto != null);
+        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<List<ASLDto>> importFromSource(@RequestBody ASLImportRequest request) {
+        log.info("[ASLController] POST /api/asl/import sourceIds={}", request != null ? request.getSourceIds() : List.of());
+        List<ASLDto> imported = aslService.importFromSource(request != null ? request.getSourceIds() : List.of());
+        log.info("[ASLController] POST /api/asl/import imported {} records", imported.size());
+        return ResponseEntity.ok(imported);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ASLDto> update(@PathVariable Long id, @RequestBody ASLDto dto) {
+        log.info("[ASLController] PUT /api/asl/{} note={} ", id, dto != null ? dto.getNote() : null);
+        ASLDto updated = aslService.update(id, dto);
+        log.info("[ASLController] PUT /api/asl/{} updated", id);
+        return ResponseEntity.ok(updated);
+    }
+}

@@ -43,4 +43,10 @@ public class UserRoleProjectController {
         service.delete(userId, tenantId, roleId, projectId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/user/{userId}")
+    public ResponseEntity<Void> deleteByUserId(@PathVariable Long userId) {
+        service.deleteByUserId(userId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260628-01-create-asl-table" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="asl"/>
+            </not>
+        </preConditions>
+        <createTable tableName="asl">
+            <column name="id" type="BIGINT" remarks="ID preservato da QTMTicket">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(1000)"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

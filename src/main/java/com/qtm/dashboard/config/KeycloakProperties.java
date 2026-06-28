@@ -1,6 +1,7 @@
 package com.qtm.dashboard.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.StringUtils;
 
 /**
  * Configurazione centralizzata per i parametri di integrazione con Keycloak.
@@ -10,6 +11,7 @@ public class KeycloakProperties {
 
     private String serverUrl;
     private String realm;
+    private String realmCode;
     private String tokenUrl;
     private String clientId;
     private String grantType;
@@ -31,11 +33,19 @@ public class KeycloakProperties {
     }
 
     public String getRealm() {
-        return realm;
+        return StringUtils.hasText(realm) ? realm : realmCode;
     }
 
     public void setRealm(String realm) {
         this.realm = realm;
+    }
+
+    public String getRealmCode() {
+        return realmCode;
+    }
+
+    public void setRealmCode(String realmCode) {
+        this.realmCode = realmCode;
     }
 
     public String getTokenUrl() {
