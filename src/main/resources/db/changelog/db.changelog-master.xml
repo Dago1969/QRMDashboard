@@ -24,5 +24,6 @@
     <include file="20260515-01-add-role-father-column.xml" relativeToChangelogFile="true"/>
 
     <include file="20260515-02-seed-nurse-role.xml" relativeToChangelogFile="true"/>
+    <include file="20260628-01-create-asl-table.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

@@ -10,6 +10,7 @@ import { MedicinesSearchComponent } from './features/medicines-search/medicines-
 import { MedicinesCrudComponent } from './features/medicines/medicines-crud.component';
 import { ProjectsSearchComponent } from './features/projects/projects-search.component';
 import { ProjectsCrudComponent } from './features/projects/projects-crud.component';
+import { AslManagementComponent } from './features/asl/asl-management.component';
 
 /**
  * Definizione rotte applicative minime: login pubblico e dashboard protetta.
@@ -33,7 +34,8 @@ export const appRoutes: Routes = [
       { path: 'medicines/search', component: MedicinesSearchComponent, canActivate: [authGuard] },
       { path: 'projects/search', component: ProjectsSearchComponent, canActivate: [authGuard] },
       { path: 'projects/new', component: ProjectsCrudComponent, canActivate: [authGuard] },
-      { path: 'projects/:id', component: ProjectsCrudComponent, canActivate: [authGuard] }
+      { path: 'projects/:id', component: ProjectsCrudComponent, canActivate: [authGuard] },
+      { path: 'asl', component: AslManagementComponent, canActivate: [authGuard] }
     ]
   },
   { path: 'patients/search', pathMatch: 'full', redirectTo: 'dashboard/patients/search' },

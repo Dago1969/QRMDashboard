@@ -46,4 +46,12 @@ public class ApiExceptionHandler {
         problemDetail.setTitle(HttpStatus.BAD_REQUEST.getReasonPhrase());
         return problemDetail;
     }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnhandledException(Exception exception) {
+        log.error("Unhandled exception gestita in QTMDB", exception);
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Errore interno del server");
+        problemDetail.setTitle(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
+        return problemDetail;
+    }
 }

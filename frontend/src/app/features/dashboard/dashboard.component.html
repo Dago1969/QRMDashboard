@@ -36,6 +36,9 @@
           <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/projects/search" routerLinkActive="active" class="dashboard-nav-group-link">
             {{ t('dashboard.menu.projects') }}
           </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/asl" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.asl') }}
+          </a>
         </div>
       </div>
     </nav>
