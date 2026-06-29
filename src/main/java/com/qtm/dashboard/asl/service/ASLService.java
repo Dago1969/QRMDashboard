@@ -7,9 +7,13 @@ import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +29,7 @@ public class ASLService {
     private final ASLRepository aslRepository;
     private final ASLMapper aslMapper;
     private final RestClient restClient;
+    private final String ticketBaseUrl;
 
     public ASLService(
             ASLRepository aslRepository,
@@ -33,8 +38,9 @@ public class ASLService {
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
+        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         // RestClient usato per chiamare le API QTMTicket; la base URL è configurabile in application.properties
-        this.restClient = RestClient.builder().baseUrl(ticketBaseUrl).build();
+        this.restClient = RestClient.builder().baseUrl(this.ticketBaseUrl).build();
         log.info("[ASLService] inizializzato con ticketBaseUrl={}", ticketBaseUrl);
     }
 
@@ -117,7 +123,7 @@ public class ASLService {
             return saved;
         } catch (Exception ex) {
             log.error("[ASLService] errore importOneFromTicket id={}", sourceId, ex);
-            throw ex;
+            throw mapTicketException(ex, "/asl/" + sourceId);
         }
     }
 
@@ -136,7 +142,34 @@ public class ASLService {
             return sourceAsls == null ? new ArrayList<>() : Arrays.asList(sourceAsls);
         } catch (Exception ex) {
             log.error("[ASLService] errore fetchAllAslsFromTicket", ex);
-            throw ex;
+            throw mapTicketException(ex, "/asl");
         }
+    }
+
+    private ResponseStatusException mapTicketException(Exception exception, String resourcePath) {
+        String targetUrl = ticketBaseUrl + resourcePath;
+        if (exception instanceof ResponseStatusException responseStatusException) {
+            return responseStatusException;
+        }
+        if (exception instanceof RestClientResponseException restClientResponseException) {
+            String detail = String.format(
+                    "QTMTicket ha risposto con stato %s durante la chiamata %s.",
+                    restClientResponseException.getStatusCode().value(),
+                    targetUrl
+            );
+            return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
+        }
+        if (exception instanceof ResourceAccessException) {
+            String detail = String.format(
+                    "QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che app.ticket.base-url sia corretto.",
+                    targetUrl
+            );
+            return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
+        }
+        String detail = String.format(
+                "Errore durante la chiamata a QTMTicket su %s.",
+                targetUrl
+        );
+        return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
     }
 }

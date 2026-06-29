@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
 
+interface ProblemDetailPayload {
+  detail?: string;
+  message?: string;
+}
+
 interface AslRecord {
   id: number;
   codiceAzienda: string;
@@ -150,8 +155,8 @@ export class AslManagementComponent implements OnInit {
       next: (records) => {
         this.allAslRecords = records;
       },
-      error: () => {
-        this.showMessage('asl.messages.loadError', 'error');
+      error: (error) => {
+        this.showErrorMessage(error, 'asl.messages.loadError');
       }
     });
   }
@@ -191,8 +196,8 @@ export class AslManagementComponent implements OnInit {
         this.showMessage('asl.messages.importSuccess', 'success');
         this.loadOverview();
       },
-      error: () => {
-        this.showMessage('asl.messages.importError', 'error');
+      error: (error) => {
+        this.showErrorMessage(error, 'asl.messages.importError');
       }
     });
   }
@@ -216,8 +221,8 @@ export class AslManagementComponent implements OnInit {
           asl.id === updated.id ? { ...asl, note: updated.note ?? null } : asl
         );
       },
-      error: () => {
-        this.showMessage('asl.messages.noteSaveError', 'error');
+      error: (error) => {
+        this.showErrorMessage(error, 'asl.messages.noteSaveError');
       }
     });
   }
@@ -231,8 +236,8 @@ export class AslManagementComponent implements OnInit {
       next: (value) => {
         this.selectedAsl = value;
       },
-      error: () => {
-        this.showMessage('asl.messages.loadError', 'error');
+      error: (error) => {
+        this.showErrorMessage(error, 'asl.messages.loadError');
       }
     });
   }
@@ -243,5 +248,14 @@ export class AslManagementComponent implements OnInit {
     window.setTimeout(() => {
       this.message = '';
     }, 4000);
+  }
+
+  private showErrorMessage(error: { error?: ProblemDetailPayload } | undefined, fallbackKey: string): void {
+    const detail = error?.error?.detail?.trim() || error?.error?.message?.trim();
+    this.message = detail || this.t(fallbackKey);
+    this.messageType = 'error';
+    window.setTimeout(() => {
+      this.message = '';
+    }, 6000);
   }
 }
