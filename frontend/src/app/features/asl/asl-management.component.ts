@@ -92,30 +92,13 @@ interface AslRecord {
                 <button class="btn btn-primary btn-sm" type="button" (click)="importRow(asl)" *ngIf="!asl.imported">
                   {{ t('asl.action.importRow') }}
                 </button>
-                <button class="btn btn-secondary btn-sm" type="button" (click)="selectRow(asl)" *ngIf="asl.imported">
-                  {{ t('asl.action.edit') }}
+                <button class="btn btn-secondary btn-sm" type="button" (click)="disassociateRow(asl)" *ngIf="asl.imported">
+                  {{ t('asl.action.disassociateRow') }}
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <div *ngIf="selectedAsl" class="card" style="padding: 1rem; margin-top: 1rem;">
-        <h3>{{ t('asl.details.title') }}</h3>
-        <div class="form-row">
-          <label>{{ t('asl.field.id') }}</label>
-          <input type="number" [value]="selectedAsl.id" disabled />
-        </div>
-        <div class="form-row">
-          <label>{{ t('asl.field.name') }}</label>
-          <input [value]="selectedAsl.denominazioneAzienda" disabled />
-        </div>
-        <div class="form-row">
-          <label>{{ t('asl.field.note') }}</label>
-          <textarea [(ngModel)]="selectedAsl.note"></textarea>
-        </div>
-        <button class="btn btn-primary" type="button" (click)="saveSelected()">{{ t('asl.action.saveNote') }}</button>
       </div>
     </div>
   `
@@ -128,8 +111,6 @@ export class AslManagementComponent implements OnInit {
     imported: 'all' as 'all' | 'imported' | 'notImported'
   };
   allAslRecords: AslRecord[] = [];
-  selectedAsl: AslRecord | null = null;
-  selectedId: number | null = null;
   translations: Record<string, string> = {};
   message = '';
   messageType: 'success' | 'error' = 'success';
@@ -140,7 +121,7 @@ export class AslManagementComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations) => {
+    this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations: Record<string, string>) => {
       this.translations = translations;
       this.loadOverview();
     });
@@ -152,10 +133,10 @@ export class AslManagementComponent implements OnInit {
 
   loadOverview(): void {
     this.http.get<AslRecord[]>('/api/asl/overview').subscribe({
-      next: (records) => {
+      next: (records: AslRecord[]) => {
         this.allAslRecords = records;
       },
-      error: (error) => {
+      error: (error: { error?: ProblemDetailPayload }) => {
         this.showErrorMessage(error, 'asl.messages.loadError');
       }
     });
@@ -193,51 +174,23 @@ export class AslManagementComponent implements OnInit {
   importRow(asl: AslRecord): void {
     this.http.post<AslRecord[]>('/api/asl/import', { sourceIds: [asl.id] }).subscribe({
       next: () => {
-        this.showMessage('asl.messages.importSuccess', 'success');
+        this.showMessage('asl.messages.associateSuccess', 'success');
         this.loadOverview();
       },
-      error: (error) => {
-        this.showErrorMessage(error, 'asl.messages.importError');
+      error: (error: { error?: ProblemDetailPayload }) => {
+        this.showErrorMessage(error, 'asl.messages.associateError');
       }
     });
   }
 
-  selectRow(asl: AslRecord): void {
-    this.selectedAsl = { ...asl };
-  }
-
-  saveSelected(): void {
-    if (!this.selectedAsl) {
-      return;
-    }
-
-    const currentAsl = this.selectedAsl;
-
-    this.http.put<AslRecord>(`/api/asl/${currentAsl.id}`, { id: currentAsl.id, note: currentAsl.note }).subscribe({
-      next: (updated) => {
-        this.showMessage('asl.messages.noteSaved', 'success');
-        this.selectedAsl = { ...currentAsl, note: updated.note ?? null };
-        this.allAslRecords = this.allAslRecords.map((asl) =>
-          asl.id === updated.id ? { ...asl, note: updated.note ?? null } : asl
-        );
+  disassociateRow(asl: AslRecord): void {
+    this.http.delete<void>(`/api/asl/${asl.id}`).subscribe({
+      next: () => {
+        this.showMessage('asl.messages.disassociateSuccess', 'success');
+        this.loadOverview();
       },
-      error: (error) => {
-        this.showErrorMessage(error, 'asl.messages.noteSaveError');
-      }
-    });
-  }
-
-  loadSelected(): void {
-    if (this.selectedId == null) {
-      return;
-    }
-
-    this.http.get<AslRecord>(`/api/asl/${this.selectedId}`).subscribe({
-      next: (value) => {
-        this.selectedAsl = value;
-      },
-      error: (error) => {
-        this.showErrorMessage(error, 'asl.messages.loadError');
+      error: (error: { error?: ProblemDetailPayload }) => {
+        this.showErrorMessage(error, 'asl.messages.disassociateError');
       }
     });
   }

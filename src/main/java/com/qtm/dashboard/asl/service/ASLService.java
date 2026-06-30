@@ -91,6 +91,12 @@ public class ASLService {
     }
 
     @Transactional
+    public void deleteAssociation(Long id) {
+        log.info("[ASLService] disassociazione ASL id={}", id);
+        aslRepository.deleteById(Objects.requireNonNull(id, "ASL id mancante"));
+    }
+
+    @Transactional
     public List<ASLDto> importFromSource(List<Long> sourceIds) {
         log.info("[ASLService] importazione ASL da sourceIds={}", sourceIds);
         return sourceIds.stream()
@@ -116,8 +122,9 @@ public class ASLService {
             }
 
             dto.setId(sourceId);
-            ASLEntity entity = aslMapper.dtoToEntity(dto);
-            aslRepository.findById(sourceId).ifPresent(existing -> entity.setNote(existing.getNote()));
+                ASLEntity entity = Objects.requireNonNull(aslMapper.dtoToEntity(dto), "Entity ASL non valorizzata");
+                aslRepository.findById(Objects.requireNonNull(sourceId, "Source ASL id mancante"))
+                    .ifPresent(existing -> entity.setNote(existing.getNote()));
             ASLDto saved = aslMapper.entityToDto(aslRepository.save(entity));
             log.info("[ASLService] importOneFromTicket id={} salvata con note={}", sourceId, saved.getNote());
             return saved;
