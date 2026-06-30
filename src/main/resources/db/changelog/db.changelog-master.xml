@@ -27,4 +27,6 @@
 
     <include file="20260628-01-create-asl-table.xml" relativeToChangelogFile="true"/>
 
+    <include file="20260630-01-add-asl-referents-json.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

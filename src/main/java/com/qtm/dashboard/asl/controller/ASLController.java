@@ -68,7 +68,8 @@ public class ASLController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ASLDto> update(@PathVariable Long id, @RequestBody ASLDto dto) {
-        log.info("[ASLController] PUT /api/asl/{} note={} ", id, dto != null ? dto.getNote() : null);
+        log.info("[ASLController] PUT /api/asl/{} note={} referents={}", id, dto != null ? dto.getNote() : null,
+                dto != null && dto.getReferents() != null ? dto.getReferents().size() : 0);
         ASLDto updated = aslService.update(id, dto);
         log.info("[ASLController] PUT /api/asl/{} updated", id);
         return ResponseEntity.ok(updated);

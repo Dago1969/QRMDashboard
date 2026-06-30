@@ -86,7 +86,10 @@ public class ASLService {
     public ASLDto update(Long id, ASLDto dto) {
         ASLEntity entity = aslRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("ASL non trovata: " + id));
-        entity.setNote(dto.getNote());
+        if (dto.getNote() != null) {
+            entity.setNote(dto.getNote());
+        }
+        entity.setReferentsJson(aslMapper.dtoToEntity(dto).getReferentsJson());
         return aslMapper.entityToDto(aslRepository.save(entity));
     }
 
@@ -122,9 +125,12 @@ public class ASLService {
             }
 
             dto.setId(sourceId);
-                ASLEntity entity = Objects.requireNonNull(aslMapper.dtoToEntity(dto), "Entity ASL non valorizzata");
-                aslRepository.findById(Objects.requireNonNull(sourceId, "Source ASL id mancante"))
-                    .ifPresent(existing -> entity.setNote(existing.getNote()));
+            ASLEntity entity = Objects.requireNonNull(aslMapper.dtoToEntity(dto), "Entity ASL non valorizzata");
+            aslRepository.findById(Objects.requireNonNull(sourceId, "Source ASL id mancante"))
+                    .ifPresent(existing -> {
+                        entity.setNote(existing.getNote());
+                        entity.setReferentsJson(existing.getReferentsJson());
+                    });
             ASLDto saved = aslMapper.entityToDto(aslRepository.save(entity));
             log.info("[ASLService] importOneFromTicket id={} salvata con note={}", sourceId, saved.getNote());
             return saved;

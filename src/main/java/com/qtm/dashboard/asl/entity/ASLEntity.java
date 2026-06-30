@@ -26,4 +26,7 @@ public class ASLEntity {
 
     @Column(name = "note", length = 1000)
     private String note;
+
+    @Column(name = "referents_json", length = 8000)
+    private String referentsJson;
 }
