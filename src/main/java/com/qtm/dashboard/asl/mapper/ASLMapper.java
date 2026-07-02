@@ -27,8 +27,10 @@ public class ASLMapper {
 
         return ASLDto.builder()
                 .id(entity.getId())
+                .codiceAzienda(entity.getCodiceAzienda())
+                .denominazioneAzienda(entity.getDenominazioneAzienda())
                 .note(entity.getNote())
-            .referents(readReferents(entity.getReferentsJson()))
+                .referents(readReferents(entity.getReferentsJson()))
                 .build();
     }
 
@@ -39,9 +41,20 @@ public class ASLMapper {
 
         return ASLEntity.builder()
                 .id(dto.getId())
+                .codiceAzienda(dto.getCodiceAzienda())
+                .denominazioneAzienda(dto.getDenominazioneAzienda())
                 .note(dto.getNote())
                 .referentsJson(writeReferents(dto.getReferents()))
                 .build();
+    }
+
+    public ASLEntity applyCodes(ASLEntity entity, String codiceAzienda, String codiceRegione) {
+        if (entity == null) {
+            return null;
+        }
+        entity.setCodiceAzienda(codiceAzienda);
+        entity.setCodiceRegione(codiceRegione);
+        return entity;
     }
 
     private List<ReferentDto> readReferents(String referentsJson) {

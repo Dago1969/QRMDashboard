@@ -1,11 +1,15 @@
 package com.qtm.dashboard.asl.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qtm.commonlib.dto.ASLDto;
 import com.qtm.dashboard.asl.dto.ASLOverviewDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,7 +34,9 @@ public class ASLService {
     private final ASLMapper aslMapper;
     private final RestClient restClient;
     private final String ticketBaseUrl;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Autowired
     public ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
@@ -42,6 +48,18 @@ public class ASLService {
         // RestClient usato per chiamare le API QTMTicket; la base URL è configurabile in application.properties
         this.restClient = RestClient.builder().baseUrl(this.ticketBaseUrl).build();
         log.info("[ASLService] inizializzato con ticketBaseUrl={}", ticketBaseUrl);
+    }
+
+    ASLService(
+            ASLRepository aslRepository,
+            ASLMapper aslMapper,
+            RestClient restClient,
+            String ticketBaseUrl
+    ) {
+        this.aslRepository = aslRepository;
+        this.aslMapper = aslMapper;
+        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
+        this.restClient = restClient;
     }
 
     @Transactional(readOnly = true)
@@ -68,10 +86,11 @@ public class ASLService {
         return sourceAsls.stream()
                 .map(source -> {
                     ASLEntity localEntity = localAslMap.get(source.getId());
-                    return ASLOverviewDto.builder()
+                        return ASLOverviewDto.builder()
                             .id(source.getId())
                             .codiceAzienda(source.getCodiceAzienda())
                             .denominazioneAzienda(source.getDenominazioneAzienda())
+                            .codiceRegione(source.getCodiceRegione())
                             .indirizzo(source.getIndirizzo())
                             .email(source.getEmail())
                             .telefono(source.getTelefono())
@@ -115,25 +134,39 @@ public class ASLService {
     private ASLDto importOneFromTicket(Long sourceId) {
         log.info("[ASLService] chiamata QTMTicket per import ASL id={}", sourceId);
         try {
-            ASLDto dto = restClient.get()
+            String responseBody = restClient.get()
                     .uri("/asl/{id}", sourceId)
                     .retrieve()
-                    .body(ASLDto.class);
+                    .body(String.class);
 
+            if (responseBody == null || responseBody.isBlank()) {
+                throw new IllegalArgumentException("ASL non trovata in QTMTicket: " + sourceId);
+            }
+
+            JsonNode payload = objectMapper.readTree(responseBody);
+            ASLDto dto = objectMapper.treeToValue(payload, ASLDto.class);
             if (dto == null) {
                 throw new IllegalArgumentException("ASL non trovata in QTMTicket: " + sourceId);
             }
 
             dto.setId(sourceId);
             ASLEntity entity = Objects.requireNonNull(aslMapper.dtoToEntity(dto), "Entity ASL non valorizzata");
+            JsonNode codiceAziendaNode = payload.has("codiceAzienda") ? payload.get("codiceAzienda") : payload.path("codice_azienda");
+            JsonNode codiceRegioneNode = payload.has("codiceRegione") ? payload.get("codiceRegione") : payload.path("codice_regione");
+            String codiceAzienda = (codiceAziendaNode == null || codiceAziendaNode.isMissingNode() || codiceAziendaNode.isNull()) ? dto.getCodiceAzienda() : codiceAziendaNode.asText();
+            String codiceRegione = (codiceRegioneNode == null || codiceRegioneNode.isMissingNode() || codiceRegioneNode.isNull()) ? null : codiceRegioneNode.asText();
+            aslMapper.applyCodes(entity, codiceAzienda, codiceRegione);
             aslRepository.findById(Objects.requireNonNull(sourceId, "Source ASL id mancante"))
                     .ifPresent(existing -> {
                         entity.setNote(existing.getNote());
                         entity.setReferentsJson(existing.getReferentsJson());
                     });
             ASLDto saved = aslMapper.entityToDto(aslRepository.save(entity));
-            log.info("[ASLService] importOneFromTicket id={} salvata con note={}", sourceId, saved.getNote());
+            log.info("[ASLService] importOneFromTicket id={} salvata con codiceAzienda={} codiceRegione={}", sourceId, entity.getCodiceAzienda(), entity.getCodiceRegione());
             return saved;
+        } catch (JsonProcessingException ex) {
+            log.error("[ASLService] errore parsing JSON importOneFromTicket id={}", sourceId, ex);
+            throw mapTicketException(ex, "/asl/" + sourceId);
         } catch (Exception ex) {
             log.error("[ASLService] errore importOneFromTicket id={}", sourceId, ex);
             throw mapTicketException(ex, "/asl/" + sourceId);

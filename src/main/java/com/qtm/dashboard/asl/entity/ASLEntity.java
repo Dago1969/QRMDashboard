@@ -27,6 +27,15 @@ public class ASLEntity {
     @Column(name = "note", length = 1000)
     private String note;
 
+    @Column(name = "codice_azienda", length = 50)
+    private String codiceAzienda;
+
+    @Column(name = "denominazione_azienda", length = 500)
+    private String denominazioneAzienda;
+
+    @Column(name = "codice_regione", length = 10)
+    private String codiceRegione;
+
     @Column(name = "referents_json", length = 8000)
     private String referentsJson;
 }

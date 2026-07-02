@@ -38,10 +38,11 @@ class ASLServiceTest {
                 .denominazioneAzienda("ASL Test")
                 .build();
 
-        ASLEntity entity = new ASLEntity();
-        entity.setId(321L);
-        entity.setCodiceAzienda("001");
-        entity.setDenominazioneAzienda("ASL Test");
+        ASLEntity entity = ASLEntity.builder()
+                .id(321L)
+                .codiceAzienda("001")
+                .denominazioneAzienda("ASL Test")
+                .build();
 
         when(aslMapper.dtoToEntity(dto)).thenReturn(entity);
         when(aslRepository.save(any(ASLEntity.class))).thenReturn(entity);

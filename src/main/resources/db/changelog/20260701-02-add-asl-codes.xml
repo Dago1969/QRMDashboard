@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260701-02-add-asl-codes" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="asl"/>
+            <not>
+                <columnExists tableName="asl" columnName="codice_azienda"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="asl">
+            <column name="codice_azienda" type="VARCHAR(50)"/>
+        </addColumn>
+        <addColumn tableName="asl">
+            <column name="codice_regione" type="VARCHAR(10)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

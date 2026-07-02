@@ -29,4 +29,10 @@
 
     <include file="20260630-01-add-asl-referents-json.xml" relativeToChangelogFile="true"/>
 
+    <include file="20260701-01-create-hospital-table.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260701-02-add-asl-codes.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260701-03-ensure-asl-columns.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

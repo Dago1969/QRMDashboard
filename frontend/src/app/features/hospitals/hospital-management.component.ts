@@ -9,44 +9,52 @@ interface ProblemDetailPayload {
   message?: string;
 }
 
-interface AslRecord {
+interface HospitalRecord {
   id: number;
-  codiceAzienda: string;
-  denominazioneAzienda: string;
+  codiceRegione?: string;
+  codiceAsl?: string;
+  codiceStruttura?: string;
+  struttura?: string;
   indirizzo?: string;
-  telefono?: string;
-  email?: string;
+  hospitalTypeId?: number;
+  aslId?: number;
   imported: boolean;
   note?: string | null;
-  codiceRegione?: string;
 }
 
 @Component({
-  selector: 'app-asl-management',
+  selector: 'app-hospital-management',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
     <div class="card dashboard-content-card">
       <div class="dashboard-header">
-        <h2>{{ t('dashboard.menu.asl') }}</h2>
+        <h2>{{ t('dashboard.menu.hospital') }}</h2>
       </div>
 
-      <p class="dashboard-selection-info">{{ t('asl.management.subtitle') }}</p>
+      <p class="dashboard-selection-info">{{ t('hospital.management.subtitle') }}</p>
 
       <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
         <div class="form-row">
-          <label>{{ t('asl.filter.id') }}</label>
+          <label>{{ t('hospital.filter.id') }}</label>
           <input type="number" [(ngModel)]="filters.id" />
         </div>
         <div class="form-row">
-          <label>{{ t('asl.filter.code') }}</label>
+          <label>{{ t('hospital.filter.code') }}</label>
           <input type="text" [(ngModel)]="filters.code" />
         </div>
         <div class="form-row">
-          <label>{{ t('asl.filter.name') }}</label>
+          <label>{{ t('hospital.filter.name') }}</label>
           <input type="text" [(ngModel)]="filters.name" />
         </div>
-        <!-- imported filter removed as per UI update -->
+        <div class="form-row">
+          <label>{{ t('hospital.filter.imported') }}</label>
+          <select [(ngModel)]="filters.imported">
+            <option value="all">{{ t('hospital.filter.status.all') }}</option>
+            <option value="imported">{{ t('hospital.filter.status.imported') }}</option>
+            <option value="notImported">{{ t('hospital.filter.status.notImported') }}</option>
+          </select>
+        </div>
         <div class="form-row" style="gap: 0.5rem;">
           <button class="btn btn-primary btn-sm" type="button" (click)="search()">{{ t('crud.actions.search') }}</button>
           <button class="btn btn-outline btn-sm" type="button" (click)="resetFilters()">{{ t('crud.actions.reset') }}</button>
@@ -61,32 +69,29 @@ interface AslRecord {
         <table class="search-table">
           <thead>
             <tr>
-              <th>{{ t('asl.column.id') }}</th>
-              <th>{{ t('asl.column.code') }}</th>
-              <th>{{ t('asl.column.name') }}</th>
-              <th>{{ t('asl.column.regionCode') }}</th>
-              <th>{{ t('asl.column.address') }}</th>
-              <th>{{ t('asl.column.email') }}</th>
-              <th>{{ t('asl.column.phone') }}</th>
-              <!-- removed imported and note columns from list view -->
+              <th>{{ t('hospital.column.id') }}</th>
+              <th>{{ t('hospital.column.regionCode') }}</th>
+              <th>{{ t('hospital.column.asl') }}</th>
+              <th>{{ t('hospital.column.code') }}</th>
+              <th>{{ t('hospital.column.name') }}</th>
+              <th>{{ t('hospital.column.address') }}</th>
               <th>{{ t('search.actions') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let asl of filteredRecords()">
-              <td>{{ asl.id }}</td>
-              <td>{{ asl.codiceAzienda }}</td>
-              <td>{{ asl.denominazioneAzienda }}</td>
-              <td>{{ asl.codiceRegione || '-' }}</td>
-              <td>{{ asl.indirizzo || '-' }}</td>
-              <td>{{ asl.email || '-' }}</td>
-              <td>{{ asl.telefono || '-' }}</td>
+            <tr *ngFor="let hospital of filteredRecords()">
+              <td>{{ hospital.id }}</td>
+              <td>{{ hospital.codiceRegione || '-' }}</td>
+              <td>{{ hospital.codiceAsl || '-' }}</td>
+              <td>{{ hospital.codiceStruttura || '-' }}</td>
+              <td>{{ hospital.struttura || '-' }}</td>
+              <td>{{ hospital.indirizzo || '-' }}</td>
               <td>
-                <button class="btn btn-primary btn-sm" type="button" (click)="importRow(asl)" *ngIf="!asl.imported">
-                  {{ t('asl.action.importRow') }}
+                <button class="btn btn-primary btn-sm" type="button" (click)="importRow(hospital)" *ngIf="!hospital.imported">
+                  {{ t('hospital.action.importRow') }}
                 </button>
-                <button class="btn btn-secondary btn-sm" type="button" (click)="disassociateRow(asl)" *ngIf="asl.imported">
-                  {{ t('asl.action.disassociateRow') }}
+                <button class="btn btn-secondary btn-sm" type="button" (click)="disassociateRow(hospital)" *ngIf="hospital.imported">
+                  {{ t('hospital.action.disassociateRow') }}
                 </button>
               </td>
             </tr>
@@ -96,14 +101,14 @@ interface AslRecord {
     </div>
   `
 })
-export class AslManagementComponent implements OnInit {
+export class HospitalManagementComponent implements OnInit {
   filters = {
     id: '' as string,
     code: '' as string,
     name: '' as string,
     imported: 'all' as 'all' | 'imported' | 'notImported'
   };
-  allAslRecords: AslRecord[] = [];
+  allHospitalRecords: HospitalRecord[] = [];
   translations: Record<string, string> = {};
   message = '';
   messageType: 'success' | 'error' = 'success';
@@ -125,31 +130,31 @@ export class AslManagementComponent implements OnInit {
   }
 
   loadOverview(): void {
-    this.http.get<AslRecord[]>('/api/asl/overview').subscribe({
-      next: (records: AslRecord[]) => {
-        this.allAslRecords = records;
+    this.http.get<HospitalRecord[]>('/api/hospital/overview').subscribe({
+      next: (records: HospitalRecord[]) => {
+        this.allHospitalRecords = records;
       },
       error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'asl.messages.loadError');
+        this.showErrorMessage(error, 'hospital.messages.loadError');
       }
     });
   }
 
-  filteredRecords(): AslRecord[] {
-    return this.allAslRecords.filter((asl) => {
-      if (this.filters.id && asl.id !== Number(this.filters.id)) {
+  filteredRecords(): HospitalRecord[] {
+    return this.allHospitalRecords.filter((hospital) => {
+      if (this.filters.id && hospital.id !== Number(this.filters.id)) {
         return false;
       }
-      if (this.filters.code && !asl.codiceAzienda.toLowerCase().includes(this.filters.code.toLowerCase())) {
+      if (this.filters.code && !(hospital.codiceStruttura || '').toLowerCase().includes(this.filters.code.toLowerCase())) {
         return false;
       }
-      if (this.filters.name && !asl.denominazioneAzienda.toLowerCase().includes(this.filters.name.toLowerCase())) {
+      if (this.filters.name && !(hospital.struttura || '').toLowerCase().includes(this.filters.name.toLowerCase())) {
         return false;
       }
-      if (this.filters.imported === 'imported' && !asl.imported) {
+      if (this.filters.imported === 'imported' && !hospital.imported) {
         return false;
       }
-      if (this.filters.imported === 'notImported' && asl.imported) {
+      if (this.filters.imported === 'notImported' && hospital.imported) {
         return false;
       }
       return true;
@@ -164,26 +169,26 @@ export class AslManagementComponent implements OnInit {
     this.filters = { id: '', code: '', name: '', imported: 'all' };
   }
 
-  importRow(asl: AslRecord): void {
-    this.http.post<AslRecord[]>('/api/asl/import', { sourceIds: [asl.id] }).subscribe({
+  importRow(hospital: HospitalRecord): void {
+    this.http.post<HospitalRecord[]>('/api/hospital/import', { sourceIds: [hospital.id] }).subscribe({
       next: () => {
-        this.showMessage('asl.messages.associateSuccess', 'success');
+        this.showMessage('hospital.messages.associateSuccess', 'success');
         this.loadOverview();
       },
       error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'asl.messages.associateError');
+        this.showErrorMessage(error, 'hospital.messages.associateError');
       }
     });
   }
 
-  disassociateRow(asl: AslRecord): void {
-    this.http.delete<void>(`/api/asl/${asl.id}`).subscribe({
+  disassociateRow(hospital: HospitalRecord): void {
+    this.http.delete<void>(`/api/hospital/${hospital.id}`).subscribe({
       next: () => {
-        this.showMessage('asl.messages.disassociateSuccess', 'success');
+        this.showMessage('hospital.messages.disassociateSuccess', 'success');
         this.loadOverview();
       },
       error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'asl.messages.disassociateError');
+        this.showErrorMessage(error, 'hospital.messages.disassociateError');
       }
     });
   }

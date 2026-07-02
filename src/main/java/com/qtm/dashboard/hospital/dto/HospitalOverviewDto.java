@@ -1,4 +1,4 @@
-package com.qtm.dashboard.asl.dto;
+package com.qtm.dashboard.hospital.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,20 +6,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO di overview ASL che include stato di importazione locale e campi letti da QTMTicket.
+ * DTO di overview ospedale che include lo stato di associazione locale e i dati da QTMTicket.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class ASLOverviewDto {
+public class HospitalOverviewDto {
     private Long id;
-    private String codiceAzienda;
-    private String denominazioneAzienda;
     private String codiceRegione;
+    private String codiceAsl;
+    private String codiceStruttura;
+    private String struttura;
     private String indirizzo;
-    private String email;
-    private String telefono;
+    private Long hospitalTypeId;
+    private Long aslId;
     private Boolean imported;
     private String note;
 }
