@@ -5,7 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Aggiorna tutti i valori http://localhost:8087/dashboard in http://localhost:4201/dashboard nella colonna tenant_app_url della tabella tenant_app_pointer -->
+    <!-- //FIXME Francesco QUESTO VA PRESO DA CONFIG Aggiorna tutti i valori http://localhost:8087/dashboard in http://localhost:4201/dashboard nella colonna tenant_app_url della tabella tenant_app_pointer -->
     <changeSet id="20260505-01-update-tenant-app-pointer" author="copilot">
         <update tableName="tenant_app_pointer">
             <column name="tenant_app_url" value="http://localhost:4201/dashboard"/>

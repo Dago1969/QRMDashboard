@@ -1,6 +1,21 @@
+// FIXME Francesco: la login dovrebbe essere gestita dal redirect nativo Keycloak; in questo modo lo stesso backend e database funzionano sia con frontend locale sia in DEV.
+
+// LOCALE: backend avviato su localhost:8086.
+// FIXME Francesco: per usare il backend locale, sostituire il blocco DEV attivo con questo blocco.
+// {
+//   "/api": {
+//     "target": "http://localhost:8086",
+//     "secure": false,
+//     "changeOrigin": true,
+//     "logLevel": "debug"
+//   }
+// }
+
+// DEV: frontend locale collegato al backend di sviluppo.
+// FIXME Francesco: configurazione temporanea DEV; rendere il target selezionabile per ambiente.
 {
   "/api": {
-    "target": "http://localhost:8086",
+    "target": "https://api.qtmdev.quicare.com/QTMDashBoard",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"

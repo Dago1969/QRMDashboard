@@ -129,6 +129,11 @@ export class LoginComponent implements OnInit {
     this.authService.resolveTenantAppUrl(client).subscribe({
       next: (resolution) => {
         const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
+        // FIXME Francesco: se il tenant punta a questa stessa app, usare il router interno e non ricaricare la root applicativa.
+        if (this.isCurrentApplication(targetUrl)) {
+          void this.router.navigate(['/dashboard']);
+          return;
+        }
         targetUrl.searchParams.set('token', token);
         targetUrl.searchParams.set('client', client);
         targetUrl.searchParams.set('role', role);
@@ -304,5 +309,14 @@ export class LoginComponent implements OnInit {
     }
 
     return targetUrl;
+  }
+
+  // FIXME Francesco: centralizzare questa logica in un servizio unico di navigazione tenant.
+  private isCurrentApplication(targetUrl: URL): boolean {
+    const appBaseUrl = new URL(document.baseURI);
+    const normalizedTargetPath = targetUrl.pathname.replace(/\/+$/, '') || '/';
+    const normalizedBasePath = appBaseUrl.pathname.replace(/\/+$/, '') || '/';
+
+    return targetUrl.origin === appBaseUrl.origin && normalizedTargetPath === normalizedBasePath;
   }
 }

@@ -10,7 +10,8 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="roles"/>
         </preConditions>
-        <sql splitStatements="true" stripComments="true"><![CDATA[
+        <!-- FIXME Francesco: mantenere separati i blocchi MySQL e MariaDB finche la sintassi di upsert non viene resa portabile. -->
+        <sql dbms="mysql" splitStatements="true" stripComments="true"><![CDATA[
 INSERT INTO roles (id, name, description, tenant_id, father)
 VALUES ('NURSE_QTM', 'NURSE_QTM', 'Ruolo infermiere con accesso alle funzioni di gestione paziente e terapie', NULL, NULL)
 AS new_values
@@ -19,6 +20,16 @@ ON DUPLICATE KEY UPDATE
     description = new_values.description,
     tenant_id = new_values.tenant_id,
     father = new_values.father;
+        ]]></sql>
+        <!-- FIXME Francesco: blocco MariaDB aggiunto per evitare la sintassi MySQL che bloccava lo startup. -->
+        <sql dbms="mariadb" splitStatements="true" stripComments="true"><![CDATA[
+INSERT INTO roles (id, name, description, tenant_id, father)
+VALUES ('NURSE_QTM', 'NURSE_QTM', 'Ruolo infermiere con accesso alle funzioni di gestione paziente e terapie', NULL, NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id),
+    father = VALUES(father);
         ]]></sql>
     </changeSet>
 

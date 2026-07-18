@@ -5,7 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Aggiorna client_code, client_name e tenant_app_url in modo parametrico, senza duplicati e senza placeholder. -->
+    <!-- FIXME Francesco VA PRESO DA CONFIG e la porta non serve... localhost non è mai possibile per il frontend... Aggiorna client_code, client_name e tenant_app_url in modo parametrico, senza duplicati e senza placeholder. -->
     <changeSet id="20260507-01-update-tenant-app-pointer-realm-param" author="copilot">
         <sql>
             UPDATE tenant_app_pointer

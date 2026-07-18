@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map, catchError, of } from 'rxjs';
 
 /**
- * Carica traduzioni da file .properties statici (es. /i18n/messages_it.properties).
+ * Carica traduzioni da file .properties statici (es. i18n/messages_it.properties).
  */
 @Injectable({ providedIn: 'root' })
 export class I18nPropertiesService {
@@ -20,8 +20,9 @@ export class I18nPropertiesService {
   }
 
   private loadFile(language: string): Observable<Record<string, string>> {
+    // FIXME Francesco: usare sempre URL relativi per le risorse frontend; lo slash iniziale ignora il path prefix di deploy.
     return this.http
-      .get(`/i18n/messages_${language}.properties`, { responseType: 'text' })
+      .get(`i18n/messages_${language}.properties`, { responseType: 'text' })
       .pipe(map((content) => this.parseProperties(content)));
   }
 
