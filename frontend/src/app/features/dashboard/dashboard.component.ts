@@ -270,10 +270,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // FIXME Francesco: centralizzare questa logica in un servizio unico di navigazione tenant.
   private isCurrentApplication(targetUrl: URL): boolean {
     const appBaseUrl = new URL(document.baseURI);
-    const normalizedTargetPath = targetUrl.pathname.replace(/\/+$/, '') || '/';
-    const normalizedBasePath = appBaseUrl.pathname.replace(/\/+$/, '') || '/';
-
-    return targetUrl.origin === appBaseUrl.origin && normalizedTargetPath === normalizedBasePath;
+    return targetUrl.origin === appBaseUrl.origin;
   }
 
   /**

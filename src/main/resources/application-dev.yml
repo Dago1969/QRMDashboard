@@ -28,7 +28,8 @@ SPRING_DATASOURCE_USERNAME: root
 SPRING_DATASOURCE_PASSWORD: qtm@dev#pwd33
 APP_KEYCLOAK_REALM_CODE: Lecigimon
 APP_KEYCLOAK_SERVER_URL: https://auth.qtmdev.quicare.com
-APP_TENANTS_BASE_URL: http://localhost:4200
+# FIXME Francesco: il frontend Tenants locale usa la porta 4201; 4200 e la Dashboard.
+APP_TENANTS_BASE_URL: http://localhost:4201
 # FIXME Francesco: logging di autenticazione temporaneo, limitato al profilo dev.
 logging:
   level:

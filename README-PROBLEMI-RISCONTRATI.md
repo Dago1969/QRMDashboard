@@ -4,7 +4,7 @@
 
 - Disabilitata l'esecuzione automatica di `data.sql` nel profilo DEV con `spring.sql.init.mode: never`, lasciando l'inizializzazione a Liquibase.
 - Resa componibile la URL del database tramite `DB_HOST`, `DB_PORT`, `DB_NAME_PREFIX` e `DB_NAME`, con fallback di `DB_NAME` su `APP_KEYCLOAK_REALM_CODE`.
-- Centralizzata la configurazione Keycloak partendo da `server-url` e `realm-code`; da questi vengono composti `realm-url`, token endpoint, issuer e JWK endpoint.
+- Centralizzata la configurazione Keycloak partendo da `server-url` e `realm-code`; da questi vengono composti `realm-url`, token endpoint, issuer e JWK endpoint. Nel `qtm-env` sono stati rimossi gli override interni `qtm-keycloak:8080`, che producevano token con issuer non coerente con il dominio pubblico.
 - Rimosso il valore di default cablato del secret del client amministrativo Keycloak.
 - Centralizzata la URL della dashboard tenant tramite `APP_TENANTS_BASE_URL` e riutilizzata nei mapping dei client.
 - Aggiunti nel solo profilo DEV i logger di autenticazione, Spring Security, client HTTP e Keycloak.
@@ -14,7 +14,10 @@
 - Reso relativo il caricamento delle risorse i18n per rispettare il base path del frontend.
 - Gestito il caso in cui il tenant punta alla dashboard stessa, evitando redirect e loop tra login e dashboard.
 - Disabilitato il riferimento a `texture.png`, assente dal repository e richiamato con un path assoluto.
-- Configurato `proxy.conf.json` per eseguire il frontend in locale contro il backend DEV; lasciata nello stesso file anche la configurazione localhost commentata.
+- Configurato `proxy.conf.json` per eseguire il frontend in locale contro i backend Dashboard e Tenants in DEV; le rotte relative `/api` e `/api/tenants` hanno nello stesso file anche i target localhost commentati.
+- Allineato `qtm-env`: il router specifico `/api/tenants/*` sul dominio Dashboard punta direttamente al backend Tenants, senza riscritture.
+- Verificata la build Dashboard con `npm run build`; il contenuto distribuibile e in `frontend/dist/qtm-dashboard-frontend/browser/`.
+- Configurata la chiamata backend Dashboard verso Ticket tramite `https://ticket.qtmdev.quicare.com/api/ticket`; l'alias `qtm-ticket-backend:8080` non risultava raggiungibile tra gli stack del server.
 - Impostato `secure: false` nel proxy DEV locale per il certificato non riconosciuto dalla CA usata da Node.
 
 ## Nota redirect tenant

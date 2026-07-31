@@ -80,4 +80,7 @@ app:
         # FIXME Francesco: mapping client B derivato dalla dashboard-url comune; evitare URL duplicati.
         tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:${app.tenants.dashboard-url}}
         enabled: true
+  ticket:
+    # FIXME Francesco: URL interno configurabile per il deploy Docker; il default mantiene l'avvio locale corrente.
+    base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api/ticket}
 
