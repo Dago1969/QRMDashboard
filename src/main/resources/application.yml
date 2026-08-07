@@ -6,6 +6,7 @@ spring:
     active: ${QTMDB_ENV:sviluppo}
   sql:
     init:
+      #FIXME Francesco dovresti passare per liquibase o avere un altro sistema
       mode: always
   jpa:
     open-in-view: false
@@ -19,8 +20,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:https://auth.qtmdev.quicare.com/realms/${APP_KEYCLOAK_REALM_CODE:realmCode}}
-
+          # FIXME Francesco: issuer e JWK derivano dalla stessa realm-url; mantenere un solo punto di composizione Keycloak.
+          issuer-uri: ${app.keycloak.realm-url}
+          jwk-set-uri: ${APP_KEYCLOAK_JWK_SET_URI:${app.keycloak.realm-url}/protocol/openid-connect/certs}
   mail:
     host: smtp.gmail.com
     port: 587
@@ -42,31 +44,43 @@ spring:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://localhost:8086}
+    # FIXME Francesco: verificare le origini per ambiente e rimuovere il valore vuoto finale dalla lista di default.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://localhost:8086,}
   keycloak:
-    server-url: ${APP_KEYCLOAK_SERVER_URL:https://auth.qtmdev.quicare.com}
-    realmCode: ${APP_KEYCLOAK_REALM_CODE:QTM}
-    token-url: ${APP_KEYCLOAK_TOKEN_URL:https://auth.qtmdev.quicare.com//realms/${APP_KEYCLOAK_REALM_CODE:realmCode}/protocol/openid-connect/token}
+    server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
+    # FIXME Francesco: mantenere realm-code, realm-url e token-url composti dalla configurazione Keycloak comune.
+    realm-code: ${APP_KEYCLOAK_REALM_CODE:QTM}
+    realm-url: ${app.keycloak.server-url}/realms/${app.keycloak.realm-code}
+    token-url: ${APP_KEYCLOAK_TOKEN_URL:${app.keycloak.realm-url}/protocol/openid-connect/token}
+
     client-id: ${APP_KEYCLOAK_CLIENT_ID:postman-client}
     client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
     admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
-    # Previous admin client secret: xEO7e15BFOtGOoDk0MWufISzYZGdTWtc  M52taRxdhMMGjU7NvkbBkHYTLFeRWWjY Q5VQ0pWS6lS5N29u0xha5zodJ1LDM19h
-    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:Q5VQ0pWS6lS5N29u0xha5zodJ1LDM19h}
+    # FIXME Francesco: secret senza default cablato; deve arrivare esclusivamente dall ambiente.
+    admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:}
     admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
     admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
     admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}
     admin-user-realm: ${APP_KEYCLOAK_ADMIN_USER_REALM:master}
     client-association-attribute: ${APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE:qtm-client-id}
   tenants:
-    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:http://localhost:4201/dashboard}
+    # FIXME Francesco: base URL tenant centralizzata; valutare un dominio dedicato senza path /dashboard.
+    base-url: ${APP_TENANTS_BASE_URL:http://localhost:4201}
+    dashboard-url: ${app.tenants.base-url}/dashboard
+    default-tenant-app-url: ${APP_TENANTS_DEFAULT_TENANT_APP_URL:${app.tenants.dashboard-url}}
     mappings:
       - client-code: app-cliente-A
         client-name: app-cliente-A
-        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:http://localhost:4201/dashboard}
+        # FIXME Francesco: mapping client A derivato dalla dashboard-url comune; evitare URL duplicati.
+        tenant-app-url: ${APP_TENANTS_CLIENT_A_URL:${app.tenants.dashboard-url}}
         enabled: true
       - client-code: app-cliente-B
         client-name: app-cliente-B
-        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:http://localhost:4201/dashboard}
+        # FIXME Francesco: mapping client B derivato dalla dashboard-url comune; evitare URL duplicati.
+        tenant-app-url: ${APP_TENANTS_CLIENT_B_URL:${app.tenants.dashboard-url}}
         enabled: true
+  ticket:
+    # FIXME Francesco: URL interno configurabile per il deploy Docker; il default mantiene l'avvio locale corrente.
+    base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api/ticket}
 

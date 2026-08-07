@@ -11,7 +11,8 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="mail_template"/>
         </preConditions>
-        <sql splitStatements="true" stripComments="true"><![CDATA[
+        <!-- FIXME Francesco: mantenere separati i blocchi MySQL e MariaDB finche la sintassi di upsert non viene resa portabile. -->
+        <sql dbms="mysql" splitStatements="true" stripComments="true"><![CDATA[
 INSERT INTO mail_template (code, language, subject, body, enabled, last_update)
 VALUES (
     'ONBOARDING',
@@ -74,6 +75,68 @@ ON DUPLICATE KEY UPDATE
     subject = new_values.subject,
     body = new_values.body,
     enabled = new_values.enabled,
+    last_update = CURRENT_TIMESTAMP;
+        ]]></sql>
+        <!-- FIXME Francesco: blocco MariaDB aggiunto per evitare la sintassi alias di MySQL che blocca lo startup. -->
+        <sql dbms="mariadb" splitStatements="true" stripComments="true"><![CDATA[
+INSERT INTO mail_template (code, language, subject, body, enabled, last_update)
+VALUES (
+    'ONBOARDING',
+    'it',
+    'Benvenuto su QTM',
+    'Ciao ${firstName},\n\nIl tuo account è stato creato correttamente.\nUsername: ${firstName}\nPassword temporanea: ${password}\nAccedi qui: ${loginUrl}\n\nPer motivi di sicurezza dovrai cambiare la password al primo login.\n\nCordiali saluti,\nIl team QTM',
+    true,
+    CURRENT_TIMESTAMP
+)
+ON DUPLICATE KEY UPDATE
+    subject = VALUES(subject),
+    body = VALUES(body),
+    enabled = VALUES(enabled),
+    last_update = CURRENT_TIMESTAMP;
+
+INSERT INTO mail_template (code, language, subject, body, enabled, last_update)
+VALUES (
+    'ONBOARDING',
+    'en',
+    'Welcome to QTM',
+    'Hi ${firstName},\n\nYour account has been created successfully.\nUsername: ${firstName}\nTemporary password: ${password}\nLogin here: ${loginUrl}\n\nFor security reasons, you will be required to change your password at first login.\n\nBest regards,\nThe QTM Team',
+    true,
+    CURRENT_TIMESTAMP
+)
+ON DUPLICATE KEY UPDATE
+    subject = VALUES(subject),
+    body = VALUES(body),
+    enabled = VALUES(enabled),
+    last_update = CURRENT_TIMESTAMP;
+
+INSERT INTO mail_template (code, language, subject, body, enabled, last_update)
+VALUES (
+    'PASSWORD_RECOVER',
+    'it',
+    'Recupero password QTM',
+    'Ciao ${firstName},\n\nAbbiamo ricevuto una richiesta di reset password per il tuo account.\nApri questo link per impostare una nuova password:\n\n${resetUrl}\n\nSe non hai richiesto tu il reset, ignora questa mail.\n\nCordiali saluti,\nIl team QTM',
+    true,
+    CURRENT_TIMESTAMP
+)
+ON DUPLICATE KEY UPDATE
+    subject = VALUES(subject),
+    body = VALUES(body),
+    enabled = VALUES(enabled),
+    last_update = CURRENT_TIMESTAMP;
+
+INSERT INTO mail_template (code, language, subject, body, enabled, last_update)
+VALUES (
+    'PASSWORD_RECOVER',
+    'en',
+    'QTM Password Recovery',
+    'Hi ${firstName},\n\nWe received a password reset request for your account.\nOpen this link to set a new password:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nThe QTM Team',
+    true,
+    CURRENT_TIMESTAMP
+)
+ON DUPLICATE KEY UPDATE
+    subject = VALUES(subject),
+    body = VALUES(body),
+    enabled = VALUES(enabled),
     last_update = CURRENT_TIMESTAMP;
         ]]></sql>
     </changeSet>

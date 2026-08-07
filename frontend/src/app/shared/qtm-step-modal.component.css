@@ -23,7 +23,8 @@
 .qtm-modal-header {
   background:
     linear-gradient(115deg, rgba(0, 99, 247, 0.98) 0%, rgba(0, 161, 255, 0.95) 34%, rgba(0, 191, 182, 0.94) 68%, rgba(15, 206, 73, 0.96) 100%),
-    url('/assets/texture.png');
+    /* FIXME Francesco: texture.png non e versionato; ripristinarlo solo con un percorso relativo, mai /assets/... assoluto. */
+    none;
   background-size: 100% 100%, 520px;
   background-repeat: no-repeat, repeat;
   background-position: center, center;
@@ -42,7 +43,8 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: url('/assets/texture.png');
+  /* FIXME Francesco: texture.png non e versionato; ripristinare l'asset e usare un URL relativo. */
+  background-image: none;
   background-repeat: repeat;
   background-size: 520px;
   opacity: 0.48;

@@ -121,6 +121,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.authService.resolveTenantAppUrl(client).subscribe({
       next: (resolution) => {
         const targetUrl = this.buildTenantTargetUrl(resolution.tenantAppUrl);
+        // FIXME Francesco: se il tenant coincide con questa app non rilanciare il redirect, altrimenti si crea un loop.
+        if (this.isCurrentApplication(targetUrl)) {
+          return;
+        }
         targetUrl.searchParams.set('token', token);
         targetUrl.searchParams.set('client', client);
         targetUrl.searchParams.set('role', role);
@@ -261,6 +265,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     return targetUrl;
+  }
+
+  // FIXME Francesco: centralizzare questa logica in un servizio unico di navigazione tenant.
+  private isCurrentApplication(targetUrl: URL): boolean {
+    const appBaseUrl = new URL(document.baseURI);
+    return targetUrl.origin === appBaseUrl.origin;
   }
 
   /**

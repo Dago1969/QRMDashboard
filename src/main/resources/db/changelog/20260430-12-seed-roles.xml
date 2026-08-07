@@ -11,7 +11,8 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="roles"/>
         </preConditions>
-        <sql splitStatements="true" stripComments="true"><![CDATA[
+        <!-- FIXME Francesco: mantenere separati i blocchi MySQL e MariaDB finche la sintassi di upsert non viene resa portabile. -->
+        <sql dbms="mysql" splitStatements="true" stripComments="true"><![CDATA[
 INSERT INTO roles (id, name, description, tenant_id)
 VALUES ('Admin_QTM', 'Admin_QTM', 'l’utente con privilegi gestionali all’interno della piattaforma QTM, con funzioni di configurazione e supervisione a livello di uno o più tenant (progetti). CRUD completo su anagrafiche, farmaci manuali, PT', NULL)
 AS new_values
@@ -59,6 +60,50 @@ ON DUPLICATE KEY UPDATE
     name = new_values.name,
     description = new_values.description,
     tenant_id = new_values.tenant_id;
+        ]]></sql>
+        <!-- FIXME Francesco: blocco MariaDB aggiunto per evitare la sintassi alias di MySQL che blocca lo startup. -->
+        <sql dbms="mariadb" splitStatements="true" stripComments="true"><![CDATA[
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Admin_QTM', 'Admin_QTM', 'l’utente con privilegi gestionali all’interno della piattaforma QTM, con funzioni di configurazione e supervisione a livello di uno o più tenant (progetti). CRUD completo su anagrafiche, farmaci manuali, PT', NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id);
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Doctor-HospitalReferent', 'Doctor-HospitalReferent', 'Ospedale/reparto assegnato', NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id);
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Operator_QTM', 'Operator_QTM', 'Operator_QTM', NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id);
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('SUPER_ADMIN', 'SUPER_ADMIN', 'SUPER_ADMIN', NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id);
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Supervisor _FO_FR', 'Supervisor _FO_FR', 'Farmacia ospedaliera o farmacia retail di competenza', NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id);
+
+INSERT INTO roles (id, name, description, tenant_id)
+VALUES ('Supervisor_ASL', 'Supervisor_ASL', 'YY figura di riferimento gestionale che opera all''interno della propria ASL nel contesto della piattaforma QTM.', NULL)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    tenant_id = VALUES(tenant_id);
         ]]></sql>
     </changeSet>
 

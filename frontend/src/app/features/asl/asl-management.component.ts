@@ -3,6 +3,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
+// FIXME Francesco: mantenere gli endpoint ASL agganciati alla configurazione frontend, senza URL assoluti cablati.
+import { environment } from '../../../environments/environment';
 
 interface ProblemDetailPayload {
   detail?: string;
@@ -125,7 +127,8 @@ export class AslManagementComponent implements OnInit {
   }
 
   loadOverview(): void {
-    this.http.get<AslRecord[]>('/api/asl/overview').subscribe({
+    // FIXME Francesco: usare sempre environment.apiBaseUrl per le API frontend; non introdurre percorsi assoluti /api.
+    this.http.get<AslRecord[]>(`${environment.apiBaseUrl}/asl/overview`).subscribe({
       next: (records: AslRecord[]) => {
         this.allAslRecords = records;
       },
@@ -165,7 +168,8 @@ export class AslManagementComponent implements OnInit {
   }
 
   importRow(asl: AslRecord): void {
-    this.http.post<AslRecord[]>('/api/asl/import', { sourceIds: [asl.id] }).subscribe({
+    // FIXME Francesco: usare sempre environment.apiBaseUrl; /api assoluto non rispetta il base path di deploy.
+    this.http.post<AslRecord[]>(`${environment.apiBaseUrl}/asl/import`, { sourceIds: [asl.id] }).subscribe({
       next: () => {
         this.showMessage('asl.messages.associateSuccess', 'success');
         this.loadOverview();
@@ -177,7 +181,8 @@ export class AslManagementComponent implements OnInit {
   }
 
   disassociateRow(asl: AslRecord): void {
-    this.http.delete<void>(`/api/asl/${asl.id}`).subscribe({
+    // FIXME Francesco: usare sempre environment.apiBaseUrl; /api assoluto non rispetta il base path di deploy.
+    this.http.delete<void>(`${environment.apiBaseUrl}/asl/${asl.id}`).subscribe({
       next: () => {
         this.showMessage('asl.messages.disassociateSuccess', 'success');
         this.loadOverview();
