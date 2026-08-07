@@ -15,7 +15,7 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,23 +46,46 @@ class HospitalServiceTest {
 
         ASLEntity associatedAsl = new ASLEntity();
         associatedAsl.setId(10L);
+        associatedAsl.setCodiceRegione("01");
+        associatedAsl.setCodiceAzienda("201");
         when(aslRepository.findAll()).thenReturn(List.of(associatedAsl));
 
         HospitalDto visibleHospital = HospitalDto.builder()
                 .id(100L)
+            .codiceRegione("01")
+            .codiceAsl("201")
                 .aslId(10L)
                 .struttura("Ospedale Test")
                 .build();
         HospitalDto hiddenHospital = HospitalDto.builder()
                 .id(200L)
+            .codiceRegione("01")
+            .codiceAsl("999")
                 .aslId(99L)
                 .struttura("Ospedale Altro")
                 .build();
 
-        when(restClient.get()).thenReturn((RestClient.RequestHeadersUriSpec<?>) requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri("/hospitals")).thenReturn((RestClient.RequestHeadersUriSpec<?>) requestHeadersUriSpec);
+        doReturn(requestHeadersUriSpec).when(restClient).get();
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/hospitals");
         when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(HospitalDto[].class)).thenReturn(new HospitalDto[]{visibleHospital, hiddenHospital});
+        when(responseSpec.body(String.class)).thenReturn("""
+            [
+              {
+                \"id\": 100,
+                \"codiceRegione\": \"01\",
+                \"codiceAsl\": \"201\",
+                \"aslId\": 10,
+                \"struttura\": \"Ospedale Test\"
+              },
+              {
+                \"id\": 200,
+                \"codiceRegione\": \"01\",
+                \"codiceAsl\": \"999\",
+                \"aslId\": 99,
+                \"struttura\": \"Ospedale Altro\"
+              }
+            ]
+            """);
 
         HospitalEntity localHospital = new HospitalEntity();
         localHospital.setId(100L);
