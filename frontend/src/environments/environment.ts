@@ -3,6 +3,6 @@
  */
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:8086/api',
+  apiBaseUrl: 'https://api.qtmdev.quicare.com/QTMDashBoard/api',
   tenantsApiBaseUrl: 'http://localhost:8087/api/tenants'
 };
