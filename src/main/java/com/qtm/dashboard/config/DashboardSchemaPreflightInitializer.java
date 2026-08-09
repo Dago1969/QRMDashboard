@@ -21,22 +21,19 @@ import java.sql.Statement;
 public class DashboardSchemaPreflightInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardSchemaPreflightInitializer.class);
-    private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306/QTMDashboard?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
-    private static final String DEFAULT_USERNAME = "root";
-    private static final String DEFAULT_PASSWORD = "dago";
     private static final int MAX_CONNECTION_ATTEMPTS = 12;
     private static final long RETRY_DELAY_MILLIS = 5000L;
 
     @Override
     public void initialize(@NonNull ConfigurableApplicationContext applicationContext) {
         Environment environment = applicationContext.getEnvironment();
-        String url = environment.getProperty("spring.datasource.url", DEFAULT_URL);
+        String url = environment.getProperty("spring.datasource.url");
         if (url == null || !url.startsWith("jdbc:mysql:")) {
             return;
         }
 
-        String username = environment.getProperty("spring.datasource.username", DEFAULT_USERNAME);
-        String password = environment.getProperty("spring.datasource.password", DEFAULT_PASSWORD);
+        String username = environment.getProperty("spring.datasource.username");
+        String password = environment.getProperty("spring.datasource.password");
 
         try (Connection connection = openConnectionWithRetry(url, username, password)) {
             if (!hasLegacyUserRolesTable(connection)) {

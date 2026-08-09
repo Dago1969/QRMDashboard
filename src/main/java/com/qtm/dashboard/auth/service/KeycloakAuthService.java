@@ -14,14 +14,17 @@ import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Arrays;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -48,15 +51,19 @@ public class KeycloakAuthService {
     private final RestClient restClient;
     private final KeycloakProperties keycloakProperties;
     private final UserRepository userRepository;
+    private final Environment environment;
 
     public KeycloakAuthService(KeycloakProperties keycloakProperties,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               Environment environment) {
         this.restClient = RestClient.builder().build();
         this.keycloakProperties = keycloakProperties;
         this.userRepository = userRepository;
+        this.environment = environment;
     }
 
     public LoginResponse login(LoginRequest loginRequest) {
+        logResolvedLoginConfiguration(loginRequest);
         List<String> loginIdentifiers = resolveLoginIdentifiers(loginRequest.getUsername());
         log.info("[KeycloakAuthService] Tentativo login per identificativo={}, candidati={}",
                 loginRequest.getUsername(), loginIdentifiers);
@@ -161,6 +168,44 @@ public class KeycloakAuthService {
             throw new ResponseStatusException(BAD_REQUEST, "Username obbligatorio");
         }
         return normalizedIdentifier;
+    }
+
+    private void logResolvedLoginConfiguration(LoginRequest loginRequest) {
+        log.info("[KeycloakAuthService] Diagnostica configurazione login: activeProfiles={}, qtmdbEnv={}, springProfilesActive={}, loginIdentifierRaw={}, passwordLength={}, envServerUrl={}, sysServerUrl={}, envLegacyRealm={}, sysLegacyRealm={}, envRealmCode={}, sysRealmCode={}, envTokenUrl={}, sysTokenUrl={}, propServerUrl={}, propRealm={}, propRealmCode={}, propTokenUrl={}, resolvedServerUrl={}, resolvedRealm={}, resolvedRealmCode={}, resolvedTokenUrl={}, clientId={}, grantType={}, clientSecretPresent={}, adminClientId={}, adminGrantType={}, adminUsername={}, adminUserRealm={}, adminClientSecretPresent={}, adminPasswordPresent={}",
+                Arrays.toString(environment.getActiveProfiles()),
+            environment.getProperty("QTMDB_ENV"),
+            environment.getProperty("spring.profiles.active"),
+                loginRequest.getUsername(),
+                safeLength(loginRequest.getPassword()),
+                environment.getProperty("APP_KEYCLOAK_SERVER_URL"),
+                System.getProperty("APP_KEYCLOAK_SERVER_URL"),
+                environment.getProperty("APP_KEYCLOAK_REALM"),
+                System.getProperty("APP_KEYCLOAK_REALM"),
+                environment.getProperty("APP_KEYCLOAK_REALM_CODE"),
+                System.getProperty("APP_KEYCLOAK_REALM_CODE"),
+                environment.getProperty("APP_KEYCLOAK_TOKEN_URL"),
+                System.getProperty("APP_KEYCLOAK_TOKEN_URL"),
+                environment.getProperty("app.keycloak.server-url"),
+                environment.getProperty("app.keycloak.realm"),
+                environment.getProperty("app.keycloak.realm-code"),
+                environment.getProperty("app.keycloak.token-url"),
+                keycloakProperties.getServerUrl(),
+                keycloakProperties.getRealm(),
+                keycloakProperties.getRealmCode(),
+                keycloakProperties.getTokenUrl(),
+                keycloakProperties.getClientId(),
+                keycloakProperties.getGrantType(),
+                StringUtils.hasText(keycloakProperties.getClientSecret()),
+                keycloakProperties.getAdminClientId(),
+                keycloakProperties.getAdminGrantType(),
+                keycloakProperties.getAdminUsername(),
+                keycloakProperties.getAdminUserRealm(),
+                StringUtils.hasText(keycloakProperties.getAdminClientSecret()),
+                StringUtils.hasText(keycloakProperties.getAdminPassword()));
+    }
+
+    private int safeLength(String value) {
+        return value == null ? 0 : value.length();
     }
 
     private LoginResponse loginWithIdentifier(String loginIdentifier, String password) {

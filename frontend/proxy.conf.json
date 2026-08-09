@@ -2,23 +2,25 @@
 
 // LOCALE: frontend e backend avviati sulla macchina locale.
 // FIXME Francesco: per usare i backend locali, sostituire il blocco DEV attivo con questo blocco.
-// {
-//   "/api/tenants": {
-//     "target": "http://localhost:8087",
-//     "secure": false,
-//     "changeOrigin": true,
-//     "logLevel": "debug"
-//   },
-//   "/api": {
-//     "target": "http://localhost:8086",
-//     "secure": false,
-//     "changeOrigin": true,
-//     "logLevel": "debug"
-//   }
-// }
+/* 
+{
+   "/api/tenants": {
+     "target": "http://localhost:8087",
+     "secure": false,
+     "changeOrigin": true,
+     "logLevel": "debug"
+   },
+   "/api": {
+     "target": "http://localhost:8086",
+     "secure": false,
+     "changeOrigin": true,
+     "logLevel": "debug"
+   }
+} */
 
-// DEV: frontend locale collegato ai backend di sviluppo.
-// FIXME Francesco: la rotta specifica /api/tenants deve precedere /api e replica il routing Traefik del qtm-env.
+
+//COLLAUDO 
+/*
 {
   "/api/tenants": {
     "target": "https://tenants.qtmdev.quicare.com",
@@ -32,4 +34,22 @@
     "changeOrigin": true,
     "logLevel": "debug"
   }
+}
+*/
+
+// DEV: frontend locale collegato ai backend di sviluppo.
+// FIXME Francesco: la rotta specifica /api/tenants deve precedere /api e replica il routing Traefik del qtm-env.
+{
+   "/api/tenants": {
+     "target": "http://localhost:8087",
+     "secure": false,
+     "changeOrigin": true,
+     "logLevel": "debug"
+   },
+   "/api": {
+     "target": "http://localhost:8086",
+     "secure": false,
+     "changeOrigin": true,
+     "logLevel": "debug"
+   }
 }

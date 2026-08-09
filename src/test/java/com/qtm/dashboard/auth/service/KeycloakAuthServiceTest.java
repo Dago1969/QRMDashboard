@@ -6,6 +6,7 @@ import com.qtm.dashboard.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.core.env.Environment;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,11 +28,14 @@ class KeycloakAuthServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private Environment environment;
+
     private KeycloakAuthService keycloakAuthService;
 
     @BeforeEach
     void setUp() {
-        keycloakAuthService = new KeycloakAuthService(keycloakProperties, userRepository);
+        keycloakAuthService = new KeycloakAuthService(keycloakProperties, userRepository, environment);
     }
 
     @Test

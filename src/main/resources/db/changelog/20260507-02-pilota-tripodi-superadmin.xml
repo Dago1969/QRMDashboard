@@ -7,6 +7,7 @@
 
     <!-- Inserimento tenant base id=1 se non esiste -->
     <changeSet id="20260507-02-insert-tenant1" author="copilot">
+        <validCheckSum>9:72b69555dc9c1eefcaa314cc88a5da07</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="tenant_app_pointer"/>
             <sqlCheck expectedResult="0">

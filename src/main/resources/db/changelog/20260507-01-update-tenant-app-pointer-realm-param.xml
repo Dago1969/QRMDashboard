@@ -7,6 +7,7 @@
 
     <!-- FIXME Francesco VA PRESO DA CONFIG e la porta non serve... localhost non è mai possibile per il frontend... Aggiorna client_code, client_name e tenant_app_url in modo parametrico, senza duplicati e senza placeholder. -->
     <changeSet id="20260507-01-update-tenant-app-pointer-realm-param" author="copilot">
+        <validCheckSum>9:74bb4b70f080aaaddac1a329b7fd3151</validCheckSum>
         <sql>
             UPDATE tenant_app_pointer
             SET client_code = CONCAT('${APP_KEYCLOAK_REALM_CODE}', '-A'),

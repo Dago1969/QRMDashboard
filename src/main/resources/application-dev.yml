@@ -14,9 +14,9 @@ spring:
 portClientA: 80 #FIXME francesco la porta non serve per i frontend... metto 80 che è la standard
 app:
   keycloak:
-    # FIXME Francesco: override dev senza valori cablati; server-url e realm-code devono arrivare dall ambiente.
-    server-url: ${APP_KEYCLOAK_SERVER_URL:}
-    realm-code: ${APP_KEYCLOAK_REALM_CODE:}
+    # Default locale per esecuzione da Eclipse; resta possibile fare override via environment.
+    server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
+    realm-code: ${APP_KEYCLOAK_REALM_CODE:QTM}
 
 # FIXME Francesco: esempi reali DEV temporanei; spostare credenziali e valori operativi fuori dal repository.
 DB_HOST: qtmdev.quicare.com
@@ -25,9 +25,10 @@ DB_HOST: qtmdev.quicare.com
 # Database risultante con i valori sotto: qtmdashboard_Lecigimon.
 DB_NAME_PREFIX: qtmdashboard_
 SPRING_DATASOURCE_USERNAME: root
-SPRING_DATASOURCE_PASSWORD: qtm@dev#pwd33
-APP_KEYCLOAK_REALM_CODE: Lecigimon
-APP_KEYCLOAK_SERVER_URL: https://auth.qtmdev.quicare.com
+SPRING_DATASOURCE_PASSWORD: dago
+#PRING_DATASOURCE_PASSWORD: qtm@dev#pwd33
+#APP_KEYCLOAK_REALM_CODE: Lecigimon
+#APP_KEYCLOAK_SERVER_URL: https://auth.qtmdev.quicare.com
 # FIXME Francesco: il frontend Tenants locale usa la porta 4201; 4200 e la Dashboard.
 APP_TENANTS_BASE_URL: http://localhost:4201
 # FIXME Francesco: logging di autenticazione temporaneo, limitato al profilo dev.
