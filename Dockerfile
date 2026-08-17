@@ -2,7 +2,7 @@
 FROM eclipse-temurin:17-jre-alpine
 
 # Imposta la directory di lavoro nel container
-WORKDIR /app
+WORKDIR /opt/app
 
 # Valori di default per l'esecuzione in container; possono essere sovrascritti con -e.
 ENV SERVER_PORT=8086 \
@@ -16,11 +16,11 @@ ENV SERVER_PORT=8086 \
 
 
 # Copia il file JAR dal tuo computer al container
-# Sostituisci 'nome-app.jar' con il nome reale del tuo file
-COPY target/qtm-dashboard-0.0.1-SNAPSHOT.jar app.jar
+# Usa un nome artefatto stabile per evitare mismatch tra packaging e runtime di collaudo.
+COPY target/qtm-dashboard.jar qtm-dashboard.jar
 
 # Esponi la porta utilizzata da Spring Boot (solitamente 8080)
 EXPOSE 8086
 
 # Comando per avviare l'applicazione
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "/opt/app/qtm-dashboard.jar"]

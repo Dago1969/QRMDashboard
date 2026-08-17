@@ -56,12 +56,12 @@ app:
     client-id: ${APP_KEYCLOAK_CLIENT_ID:postman-client}
     client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
-    admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
+    admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
     # FIXME Francesco: secret senza default cablato; deve arrivare esclusivamente dall ambiente.
     admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:}
     admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
-    admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
-    admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}
+    #admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
+    #admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}
     admin-user-realm: ${APP_KEYCLOAK_ADMIN_USER_REALM:master}
     client-association-attribute: ${APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE:qtm-client-id}
   tenants:
