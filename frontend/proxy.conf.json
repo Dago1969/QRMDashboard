@@ -8,13 +8,17 @@
      "target": "http://localhost:8087",
      "secure": false,
      "changeOrigin": true,
-     "logLevel": "debug"
+     "logLevel": "debug"	 ,
+	 "proxyTimeout": 300000,
+	 "timeout": 300000
    },
    "/api": {
      "target": "http://localhost:8086",
      "secure": false,
      "changeOrigin": true,
-     "logLevel": "debug"
+     "logLevel": "debug",
+	 "proxyTimeout": 300000,
+     "timeout": 300000
    }
 } */
 
@@ -26,13 +30,17 @@
     "target": "https://tenants.qtmdev.quicare.com",
     "secure": false,
     "changeOrigin": true,
-    "logLevel": "debug"
+    "logLevel": "debug"	,
+    "proxyTimeout": 300000,
+    "timeout": 300000
   },
   "/api": {
     "target": "https://dashboard.qtmdev.quicare.com",
     "secure": false,
     "changeOrigin": true,
-    "logLevel": "debug"
+    "logLevel": "debug"	,
+    "proxyTimeout": 300000,
+    "timeout": 300000
   }
 }
 */

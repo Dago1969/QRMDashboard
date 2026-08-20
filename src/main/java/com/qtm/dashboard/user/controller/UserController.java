@@ -144,24 +144,48 @@ public class UserController {
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> dashboard(@AuthenticationPrincipal Jwt jwt) {
         Map<String, Object> response = new LinkedHashMap<>();
+        String subject = jwt != null ? jwt.getSubject() : null;
         String preferredUsername = jwt.getClaimAsString("preferred_username");
+        Object resourceAccess = jwt != null ? jwt.getClaim("resource_access") : null;
+        log.info("[QTMDashboard][dashboard] start subject={} preferredUsername={} resourceAccessKeys={}",
+                subject,
+                preferredUsername,
+                extractResourceAccessKeys(resourceAccess));
         response.put("message", "Accesso dashboard autorizzato");
         response.put("username", preferredUsername);
+        response.put("subject", subject);
+        response.put("decodedClaims", jwt != null ? jwt.getClaims() : Map.of());
         Long userId = null;
         if (preferredUsername != null && !preferredUsername.isBlank()) {
             try {
                 userId = userService.findEntityByUsername(preferredUsername).getId();
+                log.info("[QTMDashboard][dashboard] resolved preferredUsername={} to userId={}", preferredUsername, userId);
             } catch (ResponseStatusException ex) {
                 log.warn("[QTMDashboard] Utente non trovato per preferred_username: {}", preferredUsername);
             }
         }
         if (userId != null) {
             var projects = userRoleProjectService.findDashboardProjectsByUserId(userId);
+            log.info("[QTMDashboard][dashboard] userId={} dashboardProjectsCount={} dashboardProjects={}",
+                    userId,
+                    projects.size(),
+                    projects);
             response.put("userProjects", projects);
         } else {
+            log.warn("[QTMDashboard][dashboard] no userId resolved for preferredUsername={}, returning empty userProjects", preferredUsername);
             response.put("userProjects", List.of());
         }
         return ResponseEntity.ok(response);
+    }
+
+    private List<String> extractResourceAccessKeys(Object resourceAccess) {
+        if (!(resourceAccess instanceof Map<?, ?> resourceAccessMap)) {
+            return List.of();
+        }
+
+        return resourceAccessMap.keySet().stream()
+                .map(String::valueOf)
+                .toList();
     }
 
 

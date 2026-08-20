@@ -50,11 +50,13 @@ public class DashboardSchemaPreflightInitializer implements ApplicationContextIn
     }
 
     private Connection openConnectionWithRetry(String url, String username, String password) throws SQLException {
+        String jdbcUrl = url.trim();
+
         SQLException lastException = null;
 
         for (int attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
             try {
-                return DriverManager.getConnection(url, username, password);
+                return DriverManager.getConnection(jdbcUrl, username, password);
             } catch (SQLException exception) {
                 lastException = exception;
                 log.warn("[QTMDashboard] Database non ancora pronto al tentativo {}/{}: {}", attempt, MAX_CONNECTION_ATTEMPTS, exception.getMessage());

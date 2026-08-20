@@ -1,0 +1,5 @@
+app:
+  keycloak:
+    # Profilo locale: usa Keycloak su localhost, con realm configurabile via env.
+    server-url: ${APP_KEYCLOAK_LOCAL_SERVER_URL:http://localhost:8085}
+    realm-code: ${APP_KEYCLOAK_LOCAL_REALM_CODE:QTM}

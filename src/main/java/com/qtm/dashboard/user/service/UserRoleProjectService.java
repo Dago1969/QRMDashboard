@@ -13,6 +13,7 @@ import com.qtm.dashboard.user.repository.RoleRepository;
 import com.qtm.dashboard.user.repository.UserRepository;
 import com.qtm.dashboard.user.repository.UserRoleProjectRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,6 +30,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserRoleProjectService {
 
     private final UserRoleProjectRepository repository;
@@ -39,27 +41,46 @@ public class UserRoleProjectService {
 
     @Transactional(readOnly = true)
     public List<UserRoleProjectDto> findByUserAndTenant(Long userId, Long tenantId) {
-        return repository.findByUserIdAndTenantIdOrderByRoleIdAscProjectIdAsc(userId, tenantId).stream()
+        List<UserRoleProjectEntity> entities = repository.findByUserIdAndTenantIdOrderByRoleIdAscProjectIdAsc(userId, tenantId);
+        log.info("[UserRoleProjectService] findByUserAndTenant userId={} tenantId={} rows={} rowsData={}",
+                userId,
+                tenantId,
+                entities.size(),
+                entities);
+        return entities.stream()
                 .map(this::toDto)
                 .toList();
     }
 
-        @Transactional(readOnly = true)
-        public List<DashboardUserProjectDto> findDashboardProjectsByUserId(Long userId) {
+    @Transactional(readOnly = true)
+    public List<DashboardUserProjectDto> findDashboardProjectsByUserId(Long userId) {
+        log.info("[UserRoleProjectService] findDashboardProjectsByUserId start userId={}", userId);
         Map<Long, TenantAppPointerEntity> tenantsById = tenantAppPointerRepository.findAll().stream()
             .collect(java.util.stream.Collectors.toMap(TenantAppPointerEntity::getId, tenant -> tenant));
         Map<Long, ProjectEntity> projectsById = projectRepository.findAll().stream()
             .collect(java.util.stream.Collectors.toMap(ProjectEntity::getId, project -> project));
 
-        List<DashboardUserProjectDto> relations = repository.findByUserId(userId).stream()
+        List<UserRoleProjectEntity> userRoleProjectRows = repository.findByUserId(userId);
+        log.info("[UserRoleProjectService] user_role_project rows for userId={} count={} rowsData={}",
+                userId,
+                userRoleProjectRows.size(),
+                userRoleProjectRows);
+
+        List<DashboardUserProjectDto> relations = userRoleProjectRows.stream()
             .map(entity -> toDashboardDto(entity, tenantsById, projectsById))
             .toList();
 
+        log.info("[UserRoleProjectService] mapped dashboard relations for userId={} count={} relations={}",
+                userId,
+                relations.size(),
+                relations);
+
         if (relations.isEmpty()) {
+            log.warn("[UserRoleProjectService] no dashboard relations for userId={}", userId);
             return List.of();
         }
 
-        return relations.stream()
+        List<DashboardUserProjectDto> collapsed = relations.stream()
             .filter(relation -> relation.getTenantId() != null)
             .collect(java.util.stream.Collectors.groupingBy(
                 DashboardUserProjectDto::getTenantId,
@@ -68,7 +89,13 @@ public class UserRoleProjectService {
             .values().stream()
             .flatMap(tenantRelations -> collapseTenantProjectsForDashboard(tenantRelations).stream())
             .toList();
-        }
+
+        log.info("[UserRoleProjectService] collapsed dashboard relations for userId={} count={} collapsed={}",
+                userId,
+                collapsed.size(),
+                collapsed);
+        return collapsed;
+    }
 
     @Transactional
     public UserRoleProjectDto save(UserRoleProjectDto dto) {
@@ -121,11 +148,25 @@ public class UserRoleProjectService {
             dto.setTenantCode(tenant.getClientCode());
             dto.setTenantName(tenant.getClientName());
         });
+        if (dto.getTenantCode() == null) {
+            log.warn("[UserRoleProjectService] missing tenant mapping for tenantId={} in user_role_project row userId={} roleId={} projectId={}",
+                    entity.getTenantId(),
+                    entity.getUserId(),
+                    entity.getRoleId(),
+                    entity.getProjectId());
+        }
 
         Optional.ofNullable(projectsById.get(entity.getProjectId())).ifPresent(project -> {
             dto.setProjectCode(project.getCode());
             dto.setProjectDescription(project.getDescrizione());
         });
+        if (dto.getProjectCode() == null) {
+            log.warn("[UserRoleProjectService] missing project mapping for projectId={} in user_role_project row userId={} tenantId={} roleId={}",
+                    entity.getProjectId(),
+                    entity.getUserId(),
+                    entity.getTenantId(),
+                    entity.getRoleId());
+        }
 
         return dto;
     }
