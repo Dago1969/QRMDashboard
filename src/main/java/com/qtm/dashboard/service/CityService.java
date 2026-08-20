@@ -2,6 +2,7 @@ package com.qtm.dashboard.service;
 
 import com.qtm.dashboard.domain.City;
 import com.qtm.dashboard.dto.CityDto;
+import com.qtm.dashboard.dto.GeographicOptionDto;
 import com.qtm.dashboard.mapper.CityMapper;
 import com.qtm.dashboard.repository.CityRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,5 +41,9 @@ public class CityService {
         return cityRepository.findByProvinceId(provinceId).stream()
                 .map(cityMapper::toDto)
                 .toList();
+    }
+
+    public List<GeographicOptionDto> findOptionsByProvinceId(Long provinceId) {
+        return cityRepository.findOptionsByProvinceId(provinceId);
     }
 }

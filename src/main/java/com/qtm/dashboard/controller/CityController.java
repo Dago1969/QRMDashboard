@@ -1,6 +1,7 @@
 package com.qtm.dashboard.controller;
 
 import com.qtm.dashboard.dto.CityDto;
+import com.qtm.dashboard.dto.GeographicOptionDto;
 import com.qtm.dashboard.service.CityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,11 @@ public class CityController {
     @GetMapping("/by-province/{provinceId}")
     public List<CityDto> getByProvince(@PathVariable Long provinceId) {
         return cityService.findByProvinceId(provinceId);
+    }
+
+    @GetMapping("/options/by-province/{provinceId}")
+    public List<GeographicOptionDto> getOptionsByProvince(@PathVariable Long provinceId) {
+        return cityService.findOptionsByProvinceId(provinceId);
     }
 
     @GetMapping("/{id}")

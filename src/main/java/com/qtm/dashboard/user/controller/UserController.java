@@ -61,6 +61,8 @@ public class UserController {
             @RequestHeader(name = "X-Selected-Project", required = false) String selectedProject
     ) {
         enrichSelectionContext(userDto, selectedClient, selectedProject);
+        log.info("[UserController] Creazione utente richiesta username={}, email={}, roleId={}, clientId={}, selectedProject={}",
+            userDto.getUsername(), userDto.getEmail(), userDto.getRoleId(), userDto.getClientId(), selectedProject);
         return ResponseEntity.ok(userService.create(userDto));
     }
 

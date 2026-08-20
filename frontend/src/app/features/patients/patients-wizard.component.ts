@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, QueryList, ViewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -7,6 +7,7 @@ import intlTelInput, { type AllOptions, type Iti } from 'intl-tel-input';
 import { PatientApiService, PatientDto } from '../../core/patient-api.service';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
 import { QtmStepModalComponent } from '../../shared/qtm-step-modal.component';
+import { environment } from '../../../environments/environment';
 
 type FieldType = 'text' | 'number' | 'checkbox' | 'datetime-local' | 'date' | 'select';
 
@@ -20,8 +21,11 @@ interface PatientFormModel {
   email: string;
   primaryPhone: string;
   secondaryPhone: string;
+  regionId: string;
   region: string;
+  provinceId: string;
   province: string;
+  cityId: string;
   city: string;
   deliveryAddress: string;
   secondaryAddresses: string;
@@ -57,6 +61,11 @@ interface FormFolder {
   key: string;
   titleKey: string;
   fields: FormField[];
+}
+
+interface GeographicOption {
+  id: number;
+  name: string;
 }
 
 interface PhoneInputBinding {
@@ -113,9 +122,10 @@ interface PhoneInputBinding {
               [(ngModel)]="model[field.key]"
               [name]="getFieldName(field)"
               [disabled]="field.readonly || isViewMode"
+              (ngModelChange)="onFieldValueChange(field)"
             >
               <option value=""></option>
-              <option *ngFor="let option of field.options ?? []" [value]="option.value">{{ t(option.labelKey) }}</option>
+              <option *ngFor="let option of getOptions(field)" [value]="option.value">{{ t(option.labelKey) }}</option>
             </select>
             <input
               *ngIf="field.type === 'checkbox'"
@@ -181,9 +191,9 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
         { key: 'email', labelKey: 'patients.field.email', type: 'text' },
         { key: 'primaryPhone', labelKey: 'patients.field.primaryPhone', type: 'text' },
         { key: 'secondaryPhone', labelKey: 'patients.field.secondaryPhone', type: 'text' },
-        { key: 'region', labelKey: 'patients.field.region', type: 'text' },
-        { key: 'province', labelKey: 'patients.field.province', type: 'text' },
-        { key: 'city', labelKey: 'patients.field.city', type: 'text' },
+        { key: 'regionId', labelKey: 'patients.field.region', type: 'select' },
+        { key: 'provinceId', labelKey: 'patients.field.province', type: 'select' },
+        { key: 'cityId', labelKey: 'patients.field.city', type: 'select' },
         { key: 'deliveryAddress', labelKey: 'patients.field.deliveryAddress', type: 'text' },
         { key: 'secondaryAddresses', labelKey: 'patients.field.secondaryAddresses', type: 'text' },
         { key: 'communicationChannels', labelKey: 'patients.field.communicationChannels', type: 'text' },
@@ -226,6 +236,9 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
   message = '';
   messageType: 'success' | 'error' = 'success';
   translations: Record<string, string> = {};
+  regions: GeographicOption[] = [];
+  provinces: GeographicOption[] = [];
+  cities: GeographicOption[] = [];
   phoneFieldTouched: Partial<Record<keyof PatientFormModel, boolean>> = {};
   @ViewChildren('phoneInputElement') phoneInputElements!: QueryList<ElementRef<HTMLInputElement>>;
   private phoneInputChangesSubscription?: Subscription;
@@ -234,11 +247,13 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly subscriptions = new Subscription();
 
   constructor(
+    private readonly http: HttpClient,
     private readonly patientApiService: PatientApiService,
     private readonly i18nPropertiesService: I18nPropertiesService
   ) {}
 
   ngOnInit(): void {
+    this.loadRegions();
     this.subscriptions.add(
       this.i18nPropertiesService.loadTranslations(navigator.language).subscribe({
         next: (translationMap) => {
@@ -295,6 +310,50 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
 
   getFieldName(field: FormField): string {
     return String(field.key);
+  }
+
+  getOptions(field: FormField): Array<{ value: string; labelKey: string }> {
+    if (field.key === 'regionId') {
+      return this.toSelectOptions(this.regions);
+    }
+    if (field.key === 'provinceId') {
+      return this.toSelectOptions(this.provinces);
+    }
+    if (field.key === 'cityId') {
+      return this.toSelectOptions(this.cities);
+    }
+    return field.options ?? [];
+  }
+
+  onFieldValueChange(field: FormField): void {
+    if (field.key === 'regionId') {
+      this.model.region = this.getSelectedName(this.regions, this.model.regionId);
+      this.model.provinceId = '';
+      this.model.province = '';
+      this.model.cityId = '';
+      this.model.city = '';
+      this.provinces = [];
+      this.cities = [];
+      if (this.model.regionId) {
+        this.loadProvinces(Number(this.model.regionId));
+      }
+      return;
+    }
+
+    if (field.key === 'provinceId') {
+      this.model.province = this.getSelectedName(this.provinces, this.model.provinceId);
+      this.model.cityId = '';
+      this.model.city = '';
+      this.cities = [];
+      if (this.model.provinceId) {
+        this.loadCities(Number(this.model.provinceId));
+      }
+      return;
+    }
+
+    if (field.key === 'cityId') {
+      this.model.city = this.getSelectedName(this.cities, this.model.cityId);
+    }
   }
 
   isPhoneField(field: FormField): boolean {
@@ -356,8 +415,12 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
             dataProcessingConsentDateTime: typeof patient.dataProcessingConsentDateTime === 'string'
               ? patient.dataProcessingConsentDateTime.slice(0, 16)
               : '',
+            regionId: patient.regionId === undefined || patient.regionId === null ? '' : String(patient.regionId),
+            provinceId: patient.provinceId === undefined || patient.provinceId === null ? '' : String(patient.provinceId),
+            cityId: patient.cityId === undefined || patient.cityId === null ? '' : String(patient.cityId),
             structureId: patient.structureId === undefined || patient.structureId === null ? '' : String(patient.structureId)
           };
+          this.loadLocationOptions(patient);
           this.syncPhoneInputs();
         },
         error: (error: HttpErrorResponse) => {
@@ -379,8 +442,11 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
       email: this.model.email || undefined,
       primaryPhone: this.model.primaryPhone || undefined,
       secondaryPhone: this.model.secondaryPhone || undefined,
+      regionId: this.model.regionId ? Number(this.model.regionId) : undefined,
       region: this.model.region || undefined,
+      provinceId: this.model.provinceId ? Number(this.model.provinceId) : undefined,
       province: this.model.province || undefined,
+      cityId: this.model.cityId ? Number(this.model.cityId) : undefined,
       city: this.model.city || undefined,
       deliveryAddress: this.model.deliveryAddress || undefined,
       secondaryAddresses: this.model.secondaryAddresses || undefined,
@@ -415,8 +481,11 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
       email: '',
       primaryPhone: '',
       secondaryPhone: '',
+      regionId: '',
       region: '',
+      provinceId: '',
       province: '',
+      cityId: '',
       city: '',
       deliveryAddress: '',
       secondaryAddresses: '',
@@ -438,6 +507,59 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
       preferredContact: '',
       structureId: ''
     };
+  }
+
+  private loadRegions(): void {
+    this.subscriptions.add(
+      this.http.get<GeographicOption[]>(`${environment.apiBaseUrl}/regions`).subscribe({
+        next: (regions) => this.regions = regions,
+        error: (error: HttpErrorResponse) => {
+          this.messageType = 'error';
+          this.message = this.extractErrorMessage(error, 'crud.error.load');
+        }
+      })
+    );
+  }
+
+  private loadProvinces(regionId: number): void {
+    this.subscriptions.add(
+      this.http.get<GeographicOption[]>(`${environment.apiBaseUrl}/provinces/by-region/${regionId}`).subscribe({
+        next: (provinces) => this.provinces = provinces,
+        error: (error: HttpErrorResponse) => {
+          this.messageType = 'error';
+          this.message = this.extractErrorMessage(error, 'crud.error.load');
+        }
+      })
+    );
+  }
+
+  private loadCities(provinceId: number): void {
+    this.subscriptions.add(
+      this.http.get<GeographicOption[]>(`${environment.apiBaseUrl}/cities/by-province/${provinceId}`).subscribe({
+        next: (cities) => this.cities = cities,
+        error: (error: HttpErrorResponse) => {
+          this.messageType = 'error';
+          this.message = this.extractErrorMessage(error, 'crud.error.load');
+        }
+      })
+    );
+  }
+
+  private loadLocationOptions(patient: PatientDto): void {
+    if (patient.regionId !== undefined && patient.regionId !== null) {
+      this.loadProvinces(patient.regionId);
+    }
+    if (patient.provinceId !== undefined && patient.provinceId !== null) {
+      this.loadCities(patient.provinceId);
+    }
+  }
+
+  private getSelectedName(options: GeographicOption[], selectedId: string): string {
+    return options.find((option) => option.id === Number(selectedId))?.name ?? '';
+  }
+
+  private toSelectOptions(options: GeographicOption[]): Array<{ value: string; labelKey: string }> {
+    return options.map((option) => ({ value: String(option.id), labelKey: option.name }));
   }
 
   private markPhoneFieldsTouched(): void {

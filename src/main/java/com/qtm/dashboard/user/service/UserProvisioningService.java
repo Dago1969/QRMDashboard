@@ -36,6 +36,7 @@ import java.time.LocalDate;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -109,10 +110,13 @@ public class UserProvisioningService {
                     requestedRealmRoleNames,
                     requestedClientRoleNames);
 
-            log.info("[UserProvisioningService] Password temporanea generata per username={}: {}", normalizedUsername, generatedPassword);
+                log.info("[UserProvisioningService] Password temporanea generata per username={}", normalizedUsername);
             applyPassword(keycloakUserResource, generatedPassword);
+                log.info("[UserProvisioningService] Password applicata in Keycloak per username={}", normalizedUsername);
 
             UserEntity persistedEntity = upsertDatabaseUser(userDto, normalizedUsername, generatedPassword, existingDbUser.orElse(null));
+                log.info("[UserProvisioningService] Utente persistito nel database username={}, userId={}",
+                    normalizedUsername, persistedEntity.getId());
 
             UserDto result = userMapper.toDto(persistedEntity);
             result.setClientId(requestedClientId);
@@ -120,6 +124,15 @@ public class UserProvisioningService {
             result.setTemporaryPassword(true);
             sendOnboardingMail(result, generatedPassword);
             return result;
+        } catch (Exception exception) {
+            log.error("[UserProvisioningService] Errore durante provisioning: username={}, email={}, roleId={}, requestedClientId={}, details={}",
+                    normalizedUsername,
+                    userDto.getEmail(),
+                    userDto.getRoleId(),
+                    requestedClientId,
+                    summarizeExceptionChain(exception),
+                    exception);
+            throw exception;
         } finally {
             keycloak.close();
         }
@@ -287,7 +300,7 @@ public class UserProvisioningService {
             boolean fallbackAttempt = index > 0;
             List<String> adminClientSecretCandidates = "client_credentials".equals(authenticationMode)
                     ? resolveAdminClientSecretCandidates(adminClientSecret)
-                    : List.of(adminClientSecret);
+                    : Collections.singletonList(adminClientSecret);
 
             for (int secretIndex = 0; secretIndex < adminClientSecretCandidates.size(); secretIndex++) {
                 String adminClientSecretCandidate = adminClientSecretCandidates.get(secretIndex);
