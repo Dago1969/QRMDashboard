@@ -11,7 +11,7 @@ import { environment } from '../../../environments/environment';
 const AUTO_DISMISS_DELAY_MS = 4000;
 const PATIENTS_API_URL = `${environment.apiBaseUrl}/patients`;
 
-type FieldType = 'text' | 'number' | 'checkbox' | 'datetime-local';
+type FieldType = 'text' | 'number' | 'checkbox' | 'datetime-local' | 'select';
 
 interface PatientFormModel {
   id?: number;
@@ -42,8 +42,11 @@ interface PatientFormModel {
   reminderEnabled: boolean;
   caregiverFullName: string;
   caregiverPhone: string;
+  caregiverRelationship: string;
+  otpRecipient: string;
   preferredContact: string;
   structureId: string;
+  patientConsentOtpCode?: string;
 }
 
 interface FormField {
@@ -51,6 +54,7 @@ interface FormField {
   labelKey: string;
   type: FieldType;
   readonly?: boolean;
+  options?: Array<{ value: string; labelKey: string }>;
 }
 
 interface FormFolder {
@@ -65,6 +69,14 @@ interface PhoneInputBinding {
   iti: Iti;
   syncValue: () => void;
   cleanup: () => void;
+}
+
+interface ConsentOtpState {
+  pending: boolean;
+  sent: boolean;
+  verified: boolean;
+  destination: string;
+  statusKey: string | null;
 }
 
 /**
@@ -100,45 +112,84 @@ interface PhoneInputBinding {
       </div>
 
       <form class="form-grid" (ngSubmit)="save()">
-        <label *ngFor="let field of activeFields">
-          <span>{{ t(field.labelKey) }}</span>
+        <ng-container *ngFor="let field of activeFields; let i = index">
+          <label
+            *ngIf="!(field.key === 'province' && i > 0 && activeFields[i-1]?.key === 'region') && !(field.key === 'city' && i > 0 && activeFields[i-1]?.key === 'province' && i > 1 && activeFields[i-2]?.key === 'region')"
+            [style.grid-column]="field.key === 'region' ? 'span 3' : null"
+          >
+            <span>{{ t(field.labelKey) }}</span>
 
-          <div *ngIf="isPhoneField(field); else defaultField" class="phone-input-group-intl" [class.phone-field-invalid]="shouldShowPhoneRequiredError(field)">
-            <input
-              #phoneInputElement
-              class="phone-number-input"
-              type="tel"
-              [attr.data-phone-field-key]="field.key"
-              [name]="getFieldName(field)"
-              [disabled]="field.readonly || isViewMode"
-              (blur)="onPhoneFieldBlur(field)"
-            />
-          </div>
+            <ng-container *ngIf="field.key === 'region'; else normalField">
+              <div class="location-row">
+                <div class="location-item"><input [(ngModel)]="model.region" name="region" [readonly]="field.readonly || isViewMode" /></div>
+                <div class="location-item"><input [(ngModel)]="model.province" name="province" [readonly]="isViewMode" /></div>
+                <div class="location-item"><input [(ngModel)]="model.city" name="city" [readonly]="isViewMode" /></div>
+              </div>
+            </ng-container>
 
-          <ng-template #defaultField>
+            <ng-template #normalField>
+              <div *ngIf="isPhoneField(field); else defaultField" class="phone-input-group-intl" [class.phone-field-invalid]="shouldShowPhoneRequiredError(field)">
+                <input
+                  #phoneInputElement
+                  class="phone-number-input"
+                  type="tel"
+                  [attr.data-phone-field-key]="field.key"
+                  [name]="getFieldName(field)"
+                  [disabled]="field.readonly || isViewMode"
+                  (blur)="onPhoneFieldBlur(field)"
+                />
+              </div>
+
+              <ng-template #defaultField>
+                <input
+                  *ngIf="field.type !== 'checkbox'"
+                  [type]="field.type"
+                  [(ngModel)]="model[field.key]"
+                  [name]="getFieldName(field)"
+                  [readonly]="field.readonly || isViewMode"
+                  [disabled]="field.readonly || isViewMode"
+                />
+              </ng-template>
+            </ng-template>
+
+            <small *ngIf="shouldShowPhoneRequiredError(field)" class="field-error">
+              {{ t('crud.validation.required') }}
+            </small>
+
             <input
-              *ngIf="field.type !== 'checkbox'"
-              [type]="field.type"
+              *ngIf="field.type === 'checkbox'"
+              type="checkbox"
               [(ngModel)]="model[field.key]"
               [name]="getFieldName(field)"
-              [readonly]="field.readonly || isViewMode"
-              [disabled]="field.readonly || isViewMode"
+              [disabled]="isViewMode"
+              class="checkbox-input"
             />
-          </ng-template>
+          </label>
+        </ng-container>
 
-          <small *ngIf="shouldShowPhoneRequiredError(field)" class="field-error">
-            {{ t('crud.validation.required') }}
-          </small>
+        <div *ngIf="activeFolder === 'privacy'" class="otp-block">
+          <div *ngIf="consentOtpState.destination" class="message-box message-box-success">{{ consentOtpState.destination }}</div>
+          <div *ngIf="consentOtpState.statusKey" class="message-box">{{ t(consentOtpState.statusKey) }}</div>
 
-          <input
-            *ngIf="field.type === 'checkbox'"
-            type="checkbox"
-            [(ngModel)]="model[field.key]"
-            [name]="getFieldName(field)"
-            [disabled]="isViewMode"
-            class="checkbox-input"
-          />
-        </label>
+          <div class="otp-controls">
+            <button type="button" class="secondary-btn" [disabled]="consentOtpState.pending || !hasConsentPrimaryPhone()" (click)="sendConsentOtp()">
+              {{ t('patients.privacy.otp.sendAction') }}
+            </button>
+
+            <input
+              class="otp-code-input"
+              type="text"
+              [(ngModel)]="model.patientConsentOtpCode"
+              name="patientConsentOtpCode"
+              [disabled]="consentOtpState.pending || !consentOtpState.sent"
+              placeholder="{{ t('patients.privacy.otp.code') }}"
+            />
+
+            <button type="button" class="secondary-btn" [disabled]="consentOtpState.pending || !consentOtpState.sent || !model.patientConsentOtpCode" (click)="verifyConsentOtp()">
+              {{ t('patients.privacy.otp.verifyAction') }}
+            </button>
+          </div>
+        </div>
 
         <div class="actions-row">
           <button *ngIf="!isViewMode" type="submit" class="primary-btn">
@@ -151,6 +202,14 @@ interface PhoneInputBinding {
       </form>
     </section>
   `
+  ,
+  styles: [
+    `
+    .location-row { display: flex; gap: 12px; align-items: center; }
+    .location-item { flex: 1; }
+    .location-item input { width: 100%; }
+    `
+  ]
 })
 export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly defaultPhoneCountryIsoCode = 'it';
@@ -168,6 +227,13 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
         { key: 'email', labelKey: 'patients.field.email', type: 'text' },
         { key: 'primaryPhone', labelKey: 'patients.field.primaryPhone', type: 'text' },
         { key: 'secondaryPhone', labelKey: 'patients.field.secondaryPhone', type: 'text' },
+        { key: 'caregiverFullName', labelKey: 'patients.field.caregiverFullName', type: 'text' },
+        { key: 'caregiverPhone', labelKey: 'patients.field.caregiverPhone', type: 'text' },
+        { key: 'caregiverRelationship', labelKey: 'patients.field.caregiverRelationship', type: 'select', options: [
+          { value: 'familiare', labelKey: 'patients.caregiver.relationship.familiare' },
+          { value: 'amico', labelKey: 'patients.caregiver.relationship.amico' },
+          { value: 'collaboratore', labelKey: 'patients.caregiver.relationship.collaboratore' }
+        ] },
         { key: 'region', labelKey: 'patients.field.region', type: 'text' },
         { key: 'province', labelKey: 'patients.field.province', type: 'text' },
         { key: 'city', labelKey: 'patients.field.city', type: 'text' },
@@ -182,6 +248,10 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
       titleKey: 'patients.folder.privacy',
       fields: [
         { key: 'dataProcessingConsent', labelKey: 'patients.field.dataProcessingConsent', type: 'checkbox' },
+          { key: 'otpRecipient', labelKey: 'patients.field.otpRecipient', type: 'select', options: [
+            { value: 'primaryPhone', labelKey: 'patients.otp.recipient.primary' },
+            { value: 'caregiverPhone', labelKey: 'patients.otp.recipient.caregiver' }
+          ] },
         { key: 'dataProcessingConsentDateTime', labelKey: 'patients.field.dataProcessingConsentDateTime', type: 'datetime-local' },
         { key: 'dataProcessingConsentRevocationLog', labelKey: 'patients.field.dataProcessingConsentRevocationLog', type: 'text' },
         { key: 'additionalConsents', labelKey: 'patients.field.additionalConsents', type: 'text' }
@@ -198,8 +268,6 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
         { key: 'preferredPickupPharmacy', labelKey: 'patients.field.preferredPickupPharmacy', type: 'text' },
         { key: 'deliveryMode', labelKey: 'patients.field.deliveryMode', type: 'text' },
         { key: 'reminderEnabled', labelKey: 'patients.field.reminderEnabled', type: 'checkbox' },
-        { key: 'caregiverFullName', labelKey: 'patients.field.caregiverFullName', type: 'text' },
-        { key: 'caregiverPhone', labelKey: 'patients.field.caregiverPhone', type: 'text' },
         { key: 'preferredContact', labelKey: 'patients.field.preferredContact', type: 'text' },
         { key: 'structureId', labelKey: 'patients.field.structureId', type: 'number' }
       ]
@@ -301,6 +369,10 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
 
   save(): void {
     this.markPhoneFieldsTouched();
+    if (this.hasConsentOtpSaveBlock()) {
+      this.showMessage(this.t('patients.privacy.otp.error.verifyBeforeSave'), 'error');
+      return;
+    }
     const payload = this.toPayload();
     const request = this.patientId === null
       ? this.http.post(PATIENTS_API_URL, payload)
@@ -383,6 +455,8 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
       reminderEnabled: this.model.reminderEnabled,
       caregiverFullName: this.model.caregiverFullName || null,
       caregiverPhone: this.model.caregiverPhone || null,
+      caregiverRelationship: this.model.caregiverRelationship || null,
+      otpRecipient: this.model['otpRecipient'] || null,
       preferredContact: this.model.preferredContact || null,
       structureId: this.model.structureId ? Number(this.model.structureId) : null
     };
@@ -417,6 +491,8 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
       reminderEnabled: false,
       caregiverFullName: '',
       caregiverPhone: '',
+      caregiverRelationship: '',
+      otpRecipient: 'primaryPhone',
       preferredContact: '',
       structureId: ''
     };
@@ -428,6 +504,109 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
         this.phoneFieldTouched[field.key] = true;
       }
     }
+  }
+
+  consentOtpState: ConsentOtpState = this.createConsentOtpState();
+
+  private createConsentOtpState(): ConsentOtpState {
+    return {
+      pending: false,
+      sent: false,
+      verified: false,
+      destination: '',
+      statusKey: null
+    };
+  }
+
+  hasConsentPrimaryPhone(): boolean {
+    const phone = this.getConsentPrimaryPhone();
+    return typeof phone === 'string' && phone.trim().length > 0;
+  }
+
+  private getConsentPrimaryPhone(): string {
+    if (this.model.otpRecipient === 'caregiverPhone') {
+      return this.model.caregiverPhone || '';
+    }
+    return this.model.primaryPhone || '';
+  }
+
+  sendConsentOtp(): void {
+    const phone = this.getConsentPrimaryPhone();
+    if (!phone) {
+      this.showMessage(this.t('patients.privacy.otp.error.phoneRequired'), 'error');
+      return;
+    }
+
+    this.consentOtpState = { ...this.consentOtpState, pending: true, statusKey: 'patients.privacy.otp.status.sending' };
+    // mark consent as pending
+    this.model.dataProcessingConsent = true;
+    this.model.dataProcessingConsentDateTime = '';
+
+    this.subscriptions.add(
+      this.http.post<any>(`${environment.apiBaseUrl}/users/otp/send`, { phoneNumber: phone, channel: 'sms' }).subscribe({
+        next: (result) => {
+          this.consentOtpState = {
+            pending: false,
+            sent: true,
+            verified: false,
+            destination: result?.destination ?? phone,
+            statusKey: 'patients.privacy.otp.status.sent'
+          };
+          this.showMessage(this.t('patients.privacy.otp.success.sent'), 'success');
+        },
+        error: () => {
+          this.consentOtpState = { pending: false, sent: false, verified: false, destination: '', statusKey: 'patients.privacy.otp.error.send' };
+          this.showMessage(this.t('patients.privacy.otp.error.send'), 'error');
+        }
+      })
+    );
+  }
+
+  verifyConsentOtp(): void {
+    const phone = this.getConsentPrimaryPhone();
+    const code = String(this.model.patientConsentOtpCode ?? '').trim();
+    if (!phone) {
+      this.showMessage(this.t('patients.privacy.otp.error.phoneRequired'), 'error');
+      return;
+    }
+    if (!code) {
+      this.showMessage(this.t('patients.privacy.otp.error.codeRequired'), 'error');
+      return;
+    }
+
+    this.consentOtpState = { ...this.consentOtpState, pending: true, statusKey: 'patients.privacy.otp.status.verifying' };
+
+    this.subscriptions.add(
+      this.http.post<any>(`${environment.apiBaseUrl}/users/otp/check`, { phoneNumber: phone, code, channel: 'sms' }).subscribe({
+        next: (result) => {
+          if (!result || !result.approved) {
+            this.consentOtpState = { pending: false, sent: true, verified: false, destination: result?.destination ?? phone, statusKey: 'patients.privacy.otp.error.rejected' };
+            this.model.dataProcessingConsentDateTime = '';
+            this.showMessage(this.t('patients.privacy.otp.error.rejected'), 'error');
+            return;
+          }
+
+          this.model.dataProcessingConsent = true;
+          this.model.dataProcessingConsentDateTime = this.getCurrentDateTimeLocalInputValue();
+          this.consentOtpState = { pending: false, sent: true, verified: true, destination: result.destination, statusKey: 'patients.privacy.otp.status.verified' };
+          this.showMessage(this.t('patients.privacy.otp.success.verified'), 'success');
+        },
+        error: () => {
+          this.consentOtpState = { ...this.consentOtpState, pending: false, statusKey: 'patients.privacy.otp.error.check' };
+          this.showMessage(this.t('patients.privacy.otp.error.check'), 'error');
+        }
+      })
+    );
+  }
+
+  private getCurrentDateTimeLocalInputValue(): string {
+    const currentDate = new Date();
+    const timezoneOffset = currentDate.getTimezoneOffset() * 60000;
+    return new Date(currentDate.getTime() - timezoneOffset).toISOString().slice(0, 16);
+  }
+
+  private hasConsentOtpSaveBlock(): boolean {
+    return !this.consentOtpState.verified && !this.model.dataProcessingConsentDateTime;
   }
 
   private syncPhoneInputs(): void {

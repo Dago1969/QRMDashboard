@@ -39,6 +39,8 @@ export interface PatientDto {
   reminderEnabled?: boolean;
   caregiverFullName?: string;
   caregiverPhone?: string;
+  caregiverRelationship?: string;
+  otpRecipient?: string;
   preferredContact?: string;
   structureId?: number;
 }

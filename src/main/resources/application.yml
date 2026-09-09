@@ -56,12 +56,12 @@ app:
     client-id: ${APP_KEYCLOAK_CLIENT_ID:postman-client}
     client-secret: ${APP_KEYCLOAK_CLIENT_SECRET:}
     grant-type: ${APP_KEYCLOAK_GRANT_TYPE:password}
-    admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
+    admin-client-id: ${APP_KEYCLOAK_ADMIN_CLIENT_ID:admin-cli-helper}
     # FIXME Francesco: secret senza default cablato; deve arrivare esclusivamente dall ambiente.
     admin-client-secret: ${APP_KEYCLOAK_ADMIN_CLIENT_SECRET:}
     admin-grant-type: ${APP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
-    #admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
-    #admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}
+    admin-username: ${APP_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:${KC_BOOTSTRAP_ADMIN_USERNAME:}}}
+    admin-password: ${APP_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:${KC_BOOTSTRAP_ADMIN_PASSWORD:}}}
     admin-user-realm: ${APP_KEYCLOAK_ADMIN_USER_REALM:master}
     client-association-attribute: ${APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE:qtm-client-id}
   tenants:
@@ -83,4 +83,18 @@ app:
   ticket:
     # FIXME Francesco: URL interno configurabile per il deploy Docker; il default mantiene l'avvio locale corrente.
     base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api/ticket}
+
+# Proprieta custom per OTP Twilio Verify
+qtm:
+  otp:
+    twilio:
+      enabled: ${QTM_OTP_TWILIO_ENABLED:true}
+      auto-send-on-onboarding: ${QTM_OTP_TWILIO_AUTO_SEND_ON_ONBOARDING:true}
+      base-url: ${QTM_OTP_TWILIO_BASE_URL:https://verify.twilio.com/v2}
+      service-sid: ${QTM_OTP_TWILIO_SERVICE_SID:${TWILIO_VERIFY_SERVICE_SID:}}
+      account-sid: ${QTM_OTP_TWILIO_ACCOUNT_SID:${TWILIO_ACCOUNT_SID:}}
+      auth-token: ${QTM_OTP_TWILIO_AUTH_TOKEN:${TWILIO_AUTH_TOKEN:}}
+      api-key: ${QTM_OTP_TWILIO_API_KEY:${TWILIO_API_KEY:}}
+      api-secret: ${QTM_OTP_TWILIO_API_SECRET:${TWILIO_API_SECRET:}}
+      default-channel: ${QTM_OTP_TWILIO_DEFAULT_CHANNEL:sms}
 

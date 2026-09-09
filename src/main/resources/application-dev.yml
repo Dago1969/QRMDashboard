@@ -38,3 +38,17 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client: DEBUG
     org.keycloak: DEBUG
+
+# Configurazione OTP Twilio per profilo dev
+qtm:
+  otp:
+    twilio:
+      enabled: ${QTM_OTP_TWILIO_ENABLED:true}
+      auto-send-on-onboarding: ${QTM_OTP_TWILIO_AUTO_SEND_ON_ONBOARDING:true}
+      base-url: ${QTM_OTP_TWILIO_BASE_URL:https://verify.twilio.com/v2}
+      service-sid: ${QTM_OTP_TWILIO_SERVICE_SID:${TWILIO_VERIFY_SERVICE_SID:}}
+      account-sid: ${QTM_OTP_TWILIO_ACCOUNT_SID:${TWILIO_ACCOUNT_SID:}}
+      auth-token: ${QTM_OTP_TWILIO_AUTH_TOKEN:${TWILIO_AUTH_TOKEN:}}
+      api-key: ${QTM_OTP_TWILIO_API_KEY:${TWILIO_API_KEY:}}
+      api-secret: ${QTM_OTP_TWILIO_API_SECRET:${TWILIO_API_SECRET:}}
+      default-channel: ${QTM_OTP_TWILIO_DEFAULT_CHANNEL:sms}

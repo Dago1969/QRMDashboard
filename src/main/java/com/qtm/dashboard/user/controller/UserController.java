@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,15 +44,18 @@ public class UserController {
     private final UserRoleProjectService userRoleProjectService;
     private final TenantAppPointerRepository tenantPointerRepository;
     private final ProjectRepository projectRepository;
+    private final com.qtm.dashboard.otp.service.UserOtpService userOtpService;
 
     public UserController(UserService userService,
                           UserRoleProjectService userRoleProjectService,
                           TenantAppPointerRepository tenantAppPointerRepository,
-                          ProjectRepository projectRepository) {
+                          ProjectRepository projectRepository,
+                          com.qtm.dashboard.otp.service.UserOtpService userOtpService) {
         this.userService = userService;
         this.userRoleProjectService = userRoleProjectService;
         this.tenantPointerRepository = tenantAppPointerRepository;
         this.projectRepository = projectRepository;
+        this.userOtpService = userOtpService;
     }
 
     @PostMapping
@@ -141,6 +145,22 @@ public class UserController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         userService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    
+
+    @PostMapping("/otp/send")
+    public ResponseEntity<com.qtm.dashboard.otp.dto.OtpVerificationResultResponse> sendOtpByPhone(
+            @Valid @RequestBody com.qtm.dashboard.otp.dto.OtpPhoneVerificationSendRequest request
+    ) {
+        return ResponseEntity.ok(userOtpService.sendOtpForPhone(request));
+    }
+
+    @PostMapping("/otp/check")
+    public ResponseEntity<com.qtm.dashboard.otp.dto.OtpVerificationResultResponse> checkOtpByPhone(
+            @Valid @RequestBody com.qtm.dashboard.otp.dto.OtpPhoneVerificationCheckRequest request
+    ) {
+        return ResponseEntity.ok(userOtpService.checkOtpForPhone(request));
     }
 
     @GetMapping("/dashboard")
